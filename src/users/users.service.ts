@@ -8,11 +8,17 @@ import type {
   Sanction,
   UpdateUserStatusDto,
   UserDetail,
+  UserRecord,
   UserStatus,
   UserSummary,
 } from './users.types';
 
-const USERS: UserSummary[] = [
+function stripPasswordHash(user: UserRecord): UserSummary {
+  const { passwordHash: _, ...safe } = user;
+  return safe;
+}
+
+const USERS: UserRecord[] = [
   {
     id: 1,
     nickname: '강도윤',
@@ -153,7 +159,7 @@ export class UsersService {
     });
 
     const start = (page - 1) * limit;
-    const items = filtered.slice(start, start + limit);
+    const items = filtered.slice(start, start + limit).map(stripPasswordHash);
 
     return {
       totalCount: USERS.length,
@@ -172,7 +178,7 @@ export class UsersService {
         message: '해당 유저를 찾을 수 없습니다.',
       });
     }
-    return { ...user, sanctions: SANCTIONS.get(id) ?? [] };
+    return { ...stripPasswordHash(user), sanctions: SANCTIONS.get(id) ?? [] };
   }
 
   updateUserStatus(id: number, dto: UpdateUserStatusDto) {

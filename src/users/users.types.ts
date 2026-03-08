@@ -7,7 +7,7 @@ export interface Sanction {
   createdAt: string;
 }
 
-export interface UserSummary {
+export interface UserRecord {
   id: number;
   nickname: string;
   email: string;
@@ -17,6 +17,8 @@ export interface UserSummary {
   lastActiveAt: string;
   joinedAt: string;
 }
+
+export type UserSummary = Omit<UserRecord, 'passwordHash'>;
 
 export interface UserDetail extends UserSummary {
   sanctions: Sanction[];
