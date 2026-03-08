@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { APP_GUARD } from '@nestjs/core';
@@ -11,11 +12,14 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'fallback-secret',
-      signOptions: {
-        expiresIn: (process.env.JWT_EXPIRES_IN ?? '8h') as StringValue,
-      },
+    JwtModule.registerAsync({
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET', 'fallback-secret'),
+        signOptions: {
+          expiresIn: (config.get<string>('JWT_EXPIRES_IN', '8h')) as StringValue,
+        },
+      }),
+      inject: [ConfigService],
     }),
   ],
   controllers: [AuthController],
