@@ -1,98 +1,180 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Gamyeon Backoffice API Server
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+AI 면접 플랫폼 **가면(Gamyeon)** 의 백오피스 관리 API 서버입니다.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 기술 스택
 
-## Description
+- **NestJS 11** + TypeScript
+- **JWT** 기반 인증 (Passport)
+- **bcrypt** 비밀번호 해싱
+- Mock 인메모리 데이터 (DB 연동 예정)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+## 시작하기
 
-## Project setup
+### 1. 의존성 설치
 
 ```bash
-$ npm install
+npm install
 ```
 
-## Compile and run the project
+### 2. 환경변수 설정
 
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+cp .env.example .env
 ```
 
-## Run tests
+`.env` 파일을 열어 값을 수정합니다. 필수 항목:
+
+| 변수 | 설명 | 기본값 |
+|------|------|--------|
+| `ADMIN_EMAIL` | 관리자 로그인 이메일 | `admin@gamyeon.com` |
+| `ADMIN_PASSWORD` | 관리자 비밀번호 (개발용) | - |
+| `ADMIN_PASSWORD_HASH` | bcrypt 해시 비밀번호 (프로덕션 권장) | - |
+| `JWT_SECRET` | JWT 서명 시크릿 키 | - |
+| `JWT_EXPIRES_IN` | 토큰 만료 시간 | `8h` |
+| `PORT` | 서버 포트 | `3000` |
+| `FRONTEND_URL` | 프론트엔드 URL (CORS) | `http://localhost:3001` |
+
+### 3. 실행
 
 ```bash
-# unit tests
-$ npm run test
+# 개발 모드 (watch)
+npm run start:dev
 
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+# 프로덕션 빌드
+npm run build
+npm run start:prod
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### 4. 테스트
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run test
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## API 엔드포인트
 
-## Resources
+모든 API는 `/api/v1` 접두사를 사용하며, `@Public()` 표기가 없는 엔드포인트는 JWT 인증이 필요합니다.
 
-Check out a few resources that may come in handy when working with NestJS:
+### Auth (인증)
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+| Method | Path | 설명 | 인증 |
+|--------|------|------|------|
+| `POST` | `/api/v1/auth/login` | 관리자 로그인 | 불필요 |
+| `GET` | `/api/v1/auth/me` | 로그인 정보 조회 | 필요 |
 
-## Support
+### Dashboard (대시보드)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/dashboard/kpi` | KPI 지표 |
+| `GET` | `/api/v1/dashboard/signup-trend` | 가입 추이 (`?days=13`) |
+| `GET` | `/api/v1/dashboard/interview-completion` | 면접 완료율 |
+| `GET` | `/api/v1/dashboard/report-analysis` | 리포트 분석율 |
+| `GET` | `/api/v1/dashboard/recent-activities` | 최근 활동 (`?limit=20`) |
+| `GET` | `/api/v1/dashboard/summary` | 전체 요약 (위 항목 통합) |
 
-## Stay in touch
+### Users (사용자 관리)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/users` | 사용자 목록 |
+| `GET` | `/api/v1/users/:id` | 사용자 상세 |
+| `PATCH` | `/api/v1/users/:id/status` | 상태 변경 (ACTIVE/WARNING/SUSPENDED) |
+| `GET` | `/api/v1/users/:id/sanctions` | 제재 이력 조회 |
 
-## License
+**공통 쿼리 파라미터**: `search`, `status`, `sortBy`, `sortOrder`, `page`, `limit`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### Questions (질문 관리)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/questions` | 질문 목록 |
+| `POST` | `/api/v1/questions` | 질문 생성 (최소 10자) |
+| `PATCH` | `/api/v1/questions/:id` | 질문 수정 |
+| `DELETE` | `/api/v1/questions/:id` | 질문 삭제 (소프트 딜리트) |
+
+### Notices (공지 관리)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/notices` | 공지 목록 |
+| `GET` | `/api/v1/notices/:id` | 공지 상세 |
+| `POST` | `/api/v1/notices` | 공지 생성 |
+| `PATCH` | `/api/v1/notices/:id` | 공지 수정 |
+| `DELETE` | `/api/v1/notices/:id` | 공지 삭제 (소프트 딜리트) |
+
+### Interviews (면접 세션)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/interviews` | 면접 목록 |
+| `GET` | `/api/v1/interviews/:sessionId` | 면접 상세 (질문별 상세 포함) |
+
+### Reports (분석 리포트)
+
+| Method | Path | 설명 |
+|--------|------|------|
+| `GET` | `/api/v1/reports` | 리포트 목록 |
+| `GET` | `/api/v1/reports/:reportId` | 리포트 상세 (피드백, 질문별 결과 포함) |
+
+## 응답 형식
+
+### 성공
+
+```json
+{
+  "success": true,
+  "data": { ... }
+}
+```
+
+### 오류
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "에러 메시지"
+  }
+}
+```
+
+## 프로젝트 구조
+
+```
+src/
+├── main.ts                          # 앱 진입점
+├── app.module.ts                    # 루트 모듈 (ConfigModule 포함)
+├── auth/                            # 인증 모듈
+│   ├── auth.module.ts               #   JwtModule.registerAsync 사용
+│   ├── auth.service.ts              #   로그인, getMe
+│   ├── auth.controller.ts
+│   ├── jwt.strategy.ts              #   ConfigService 주입
+│   ├── jwt-auth.guard.ts            #   글로벌 가드
+│   └── dto/login.dto.ts
+├── common/                          # 공통 유틸
+│   ├── decorators/public.decorator.ts
+│   ├── filters/http-exception.filter.ts
+│   └── interceptors/response.interceptor.ts
+├── dashboard/                       # 대시보드 모듈
+├── users/                           # 사용자 관리 모듈
+├── questions/                       # 질문 관리 모듈
+├── notices/                         # 공지 관리 모듈
+├── interviews/                      # 면접 세션 모듈
+└── reports/                         # 분석 리포트 모듈
+```
+
+## 인증 흐름
+
+1. `POST /api/v1/auth/login` — 이메일/비밀번호로 JWT 토큰 발급
+2. 이후 요청 시 `Authorization: Bearer <token>` 헤더 포함
+3. `JwtAuthGuard`가 글로벌로 적용되어 모든 라우트 보호 (`@Public()` 제외)
+
+## 현재 제한사항
+
+- 인메모리 Mock 데이터 사용 (서버 재시작 시 초기화)
+- 단일 슈퍼 관리자 계정만 지원
+- 입력 유효성 검증 (`class-validator`) 미적용
+- API 문서화 (Swagger) 미적용
