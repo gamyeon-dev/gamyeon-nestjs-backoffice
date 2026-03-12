@@ -9,6 +9,8 @@ import { NoticesModule } from './notices/notices.module';
 import { QuestionsModule } from './questions/questions.module';
 import { ReportsModule } from './reports/reports.module';
 import { UsersModule } from './users/users.module';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -23,5 +25,7 @@ import { UsersModule } from './users/users.module';
     NoticesModule,
     InterviewsModule,
   ],
+  controllers: [AppController],
+  providers: [AppService],
 })
 export class AppModule {}

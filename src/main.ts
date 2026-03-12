@@ -4,8 +4,12 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { loadConsulKvToEnv } from './consul/consul-kv.loader';
 
 async function bootstrap() {
+  // Load Consul KV before creating the Nest application so ConfigModule can see merged envs.
+  await loadConsulKvToEnv();
+
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
