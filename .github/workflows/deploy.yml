@@ -14,20 +14,20 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       # 2. Docker 이미지 빌드 및 푸시
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ vars.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest .
-          docker push ${{ vars.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
 
       # 3. EC2 접속 및 배포 실행
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ vars.EC2_HOST }}
+          host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
@@ -65,7 +65,7 @@ jobs:
             cat > docker-compose.yml << 'EOF'
             services:
               backoffice-api:
-                image: ${{ vars.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+                image: ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
                 container_name: backoffice-api
                 env_file:
                   - .env
@@ -80,5 +80,5 @@ jobs:
             EOF
 
             # 3. 최신 이미지 풀 & 컨테이너 재시작
-            docker pull ${{ vars.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
             docker-compose up -d --no-deps backoffice-api
