@@ -39,6 +39,8 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup('api-docs', app, document);
 
+  app.enableShutdownHooks(); // Consul 서비스 해제(deregister)를 위해 필요
+
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

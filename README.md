@@ -27,12 +27,10 @@ cp .env.example .env
 
 | 변수 | 설명 | 기본값 |
 |------|------|--------|
-| `ADMIN_EMAIL` | 관리자 로그인 이메일 | `admin@gamyeon.com` |
-| `ADMIN_PASSWORD` | 관리자 비밀번호 (개발용) | - |
 | `ADMIN_PASSWORD_HASH` | bcrypt 해시 비밀번호 (프로덕션 권장) | - |
 | `JWT_SECRET` | JWT 서명 시크릿 키 | - |
 | `JWT_EXPIRES_IN` | 토큰 만료 시간 | `8h` |
-| `PORT` | 서버 포트 | `3000` |
+| `PORT` | 서버 포트 | `3002` |
 | `FRONTEND_URL` | 프론트엔드 URL (CORS) | `http://localhost:3001` |
 
 ### 3. 실행
