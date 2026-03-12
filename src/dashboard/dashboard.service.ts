@@ -1,141 +1,206 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  KpiResponse,
-  SignupTrendResponse,
-  InterviewCompletionResponse,
-  ReportAnalysisResponse,
-  RecentActivitiesResponse,
-  DashboardSummaryResponse,
-  ActivityItem,
-} from './dashboard.types';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserEntity } from '../users/entities/user.entity.js';
+import { NoticeEntity } from '../notices/entities/notice.entity.js';
+import { InterviewEntity } from '../interviews/entities/interview.entity.js';
+import { ReportEntity } from '../reports/entities/report.entity.js';
 
 @Injectable()
 export class DashboardService {
-  getKpi(): KpiResponse {
+  constructor(
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(NoticeEntity)
+    private readonly noticeRepo: Repository<NoticeEntity>,
+    @InjectRepository(InterviewEntity)
+    private readonly interviewRepo: Repository<InterviewEntity>,
+    @InjectRepository(ReportEntity)
+    private readonly reportRepo: Repository<ReportEntity>,
+  ) {}
+
+  async getKpi() {
+    const totalUsers = await this.userRepo.count();
+    const totalNotices = await this.noticeRepo.count();
+
+    const interviewStatusCounts = await this.interviewRepo
+      .createQueryBuilder('intv')
+      .select('intv.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('intv.status')
+      .getRawMany<{ status: string; count: string }>();
+
+    const pausedCount = Number(
+      interviewStatusCounts.find((r) => r.status === 'PAUSED')?.count ?? 0,
+    );
+
+    const reportStatusCounts = await this.reportRepo
+      .createQueryBuilder('report')
+      .select('report.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('report.status')
+      .getRawMany<{ status: string; count: string }>();
+
+    const analyzingReports = Number(
+      reportStatusCounts.find((r) => r.status === 'IN_PROGRESS')?.count ?? 0,
+    );
+
     return {
-      totalUsers: { value: 3481, changeRate: 4.2, changeDirection: 'up' },
-      activeQuestions: { value: 8, changeRate: 0, changeDirection: 'neutral' },
-      activeNotices: { value: 3, changeRate: 0, changeDirection: 'neutral' },
-      interruptedInterviewsToday: {
-        value: 18,
-        changeRate: -12.5,
-        changeDirection: 'down',
-      },
-      analyzingReports: {
-        value: 1,
-        changeRate: -66.7,
-        changeDirection: 'down',
-      },
+      totalUsers: { value: totalUsers },
+      totalNotices: { value: totalNotices },
+      pausedInterviews: { value: pausedCount },
+      analyzingReports: { value: analyzingReports },
     };
   }
 
-  getSignupTrend(days: number = 13): SignupTrendResponse {
-    const today = new Date('2026-02-27');
-    const counts = [82, 88, 91, 77, 55, 95, 110, 115, 125, 130, 138, 141, 135];
+  async getSignupTrend(days: number = 13) {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    since.setHours(0, 0, 0, 0);
 
-    const items = Array.from({ length: days }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() - (days - 1 - i));
-      return {
-        date: date.toISOString().split('T')[0]!,
-        count: counts[i % counts.length] ?? 80,
-      };
-    });
+    const rows = await this.userRepo
+      .createQueryBuilder('user')
+      .select("TO_CHAR(user.created_at, 'YYYY-MM-DD')", 'date')
+      .addSelect('COUNT(*)', 'count')
+      .where('user.created_at >= :since', { since })
+      .groupBy("TO_CHAR(user.created_at, 'YYYY-MM-DD')")
+      .orderBy('date', 'ASC')
+      .getRawMany<{ date: string; count: string }>();
 
-    return {
-      period: `최근 ${days}일`,
-      items,
-    };
+    const countMap = new Map(rows.map((r) => [r.date, Number(r.count)]));
+
+    const items: { date: string; count: number }[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0]!;
+      items.push({ date: dateStr, count: countMap.get(dateStr) ?? 0 });
+    }
+
+    return { period: `최근 ${days}일`, items };
   }
 
-  getInterviewCompletion(): InterviewCompletionResponse {
-    return {
-      completionRate: 68,
-      segments: [
-        { label: '완료', count: 68, percentage: 68 },
-        { label: '진행중', count: 15, percentage: 15 },
-        { label: '이탈', count: 17, percentage: 17 },
-      ],
-    };
-  }
+  async getInterviewCompletion() {
+    const rows = await this.interviewRepo
+      .createQueryBuilder('intv')
+      .select('intv.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('intv.status')
+      .getRawMany<{ status: string; count: string }>();
 
-  getReportAnalysis(): ReportAnalysisResponse {
-    return {
-      completionRate: 75,
-      totalCount: 8,
-      segments: [
-        { label: '분석 완료', count: 6, percentage: 75 },
-        { label: '분석 중', count: 1, percentage: 12.5 },
-        { label: '실패', count: 1, percentage: 12.5 },
-      ],
-    };
-  }
-
-  getRecentActivities(limit: number = 20): RecentActivitiesResponse {
-    const baseTime = new Date('2026-02-27T10:30:00Z');
-
-    const rawItems: Omit<ActivityItem, 'relativeTime'>[] = [
-      {
-        id: 'act_001',
-        type: 'USER_JOINED',
-        message: '새 유저 한지호님이 가입했습니다',
-        createdAt: new Date(baseTime.getTime()).toISOString(),
-      },
-      {
-        id: 'act_002',
-        type: 'REPORT_COMPLETED',
-        message: '최유진님의 PM 면접 리포트 분석이 완료되었습니다',
-        createdAt: new Date(baseTime.getTime() - 5 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'act_003',
-        type: 'INTERVIEW_INTERRUPTED',
-        message: '문하은님이 면접을 중단했습니다 (2/5 진행)',
-        createdAt: new Date(baseTime.getTime() - 18 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'act_004',
-        type: 'NOTICE_CREATED',
-        message: "공지사항 '서비스 이용약관 개정 안내'가 등록되었습니다",
-        createdAt: new Date(baseTime.getTime() - 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'act_005',
-        type: 'REPORT_STARTED',
-        message: '강도윤님의 백엔드 면접 리포트 분석이 시작되었습니다',
-        createdAt: new Date(
-          baseTime.getTime() - 2 * 60 * 60 * 1000,
-        ).toISOString(),
-      },
-    ];
-
-    const items: ActivityItem[] = rawItems.slice(0, limit).map((item) => ({
-      ...item,
-      relativeTime: this.toRelativeTime(item.createdAt),
+    const total = rows.reduce((s, r) => s + Number(r.count), 0);
+    const segments = rows.map((r) => ({
+      label: r.status,
+      count: Number(r.count),
+      percentage: total > 0 ? Math.round((Number(r.count) / total) * 100) : 0,
     }));
 
-    return { items };
-  }
+    const finishedCount = Number(
+      rows.find((r) => r.status === 'FINISHED')?.count ?? 0,
+    );
 
-  getSummary(): DashboardSummaryResponse {
     return {
-      kpi: this.getKpi(),
-      signupTrend: this.getSignupTrend(),
-      interviewCompletion: this.getInterviewCompletion(),
-      reportAnalysis: this.getReportAnalysis(),
-      recentActivities: this.getRecentActivities(),
+      completionRate: total > 0 ? Math.round((finishedCount / total) * 100) : 0,
+      segments,
     };
   }
 
-  private toRelativeTime(isoString: string): string {
-    const now = new Date('2026-02-27T10:30:00Z');
-    const past = new Date(isoString);
-    const diffMs = now.getTime() - past.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
+  async getReportAnalysis() {
+    const rows = await this.reportRepo
+      .createQueryBuilder('report')
+      .select('report.status', 'status')
+      .addSelect('COUNT(*)', 'count')
+      .groupBy('report.status')
+      .getRawMany<{ status: string; count: string }>();
 
-    if (diffSec < 60) return '방금 전';
-    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}분 전`;
-    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}시간 전`;
-    return `${Math.floor(diffSec / 86400)}일 전`;
+    const total = rows.reduce((s, r) => s + Number(r.count), 0);
+    const segments = rows.map((r) => ({
+      label: r.status,
+      count: Number(r.count),
+      percentage: total > 0 ? Math.round((Number(r.count) / total) * 100) : 0,
+    }));
+
+    const completedCount = Number(
+      rows.find((r) => r.status === 'COMPLETED')?.count ?? 0,
+    );
+
+    return {
+      completionRate:
+        total > 0 ? Math.round((completedCount / total) * 100) : 0,
+      totalCount: total,
+      segments,
+    };
+  }
+
+  async getRecentActivities(limit: number = 20) {
+    const recentUsers = await this.userRepo.find({
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+
+    const recentInterviews = await this.interviewRepo.find({
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      take: limit,
+    });
+
+    type ActivityItem = {
+      type: string;
+      message: string;
+      createdAt: string;
+    };
+
+    const items: ActivityItem[] = [];
+
+    for (const u of recentUsers) {
+      items.push({
+        type: 'USER_JOINED',
+        message: `새 유저 ${u.nickname}님이 가입했습니다`,
+        createdAt: u.createdAt.toISOString(),
+      });
+    }
+
+    for (const iv of recentInterviews) {
+      const nickname = iv.user?.nickname ?? '알 수 없음';
+      if (iv.status === 'FINISHED') {
+        items.push({
+          type: 'INTERVIEW_COMPLETED',
+          message: `${nickname}님의 면접이 완료되었습니다`,
+          createdAt: (iv.finishedAt ?? iv.updatedAt).toISOString(),
+        });
+      } else if (iv.status === 'PAUSED') {
+        items.push({
+          type: 'INTERVIEW_PAUSED',
+          message: `${nickname}님이 면접을 일시정지했습니다`,
+          createdAt: (iv.pausedAt ?? iv.updatedAt).toISOString(),
+        });
+      }
+    }
+
+    items.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+
+    return { items: items.slice(0, limit) };
+  }
+
+  async getSummary() {
+    const [kpi, signupTrend, interviewCompletion, reportAnalysis, recentActivities] =
+      await Promise.all([
+        this.getKpi(),
+        this.getSignupTrend(),
+        this.getInterviewCompletion(),
+        this.getReportAnalysis(),
+        this.getRecentActivities(),
+      ]);
+
+    return {
+      kpi,
+      signupTrend,
+      interviewCompletion,
+      reportAnalysis,
+      recentActivities,
+    };
   }
 }
