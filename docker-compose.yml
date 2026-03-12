@@ -1,8 +1,30 @@
 services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: gamyeon
+      POSTGRES_PASSWORD: gamyeon1234
+      POSTGRES_DB: gamyeon
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gamyeon -d gamyeon"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - backoffice_pgdata:/var/lib/postgresql/data
+
   backoffice-api:
     build: .
     env_file:
       - .env
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "3002:3002"
     restart: unless-stopped
+
+volumes:
+  backoffice_pgdata:
