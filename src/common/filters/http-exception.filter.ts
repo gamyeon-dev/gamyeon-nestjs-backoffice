@@ -57,6 +57,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (res['message'] && typeof res['message'] === 'string') {
         message = res['message'];
       } else if (Array.isArray(res['message'])) {
+        code = 'VALIDATION_ERROR';
         message = (res['message'] as string[]).join(', ');
       }
     }

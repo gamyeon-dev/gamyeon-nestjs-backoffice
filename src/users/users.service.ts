@@ -3,186 +3,93 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  ListUsersQuery,
-  Sanction,
-  UpdateUserStatusDto,
-  UserDetail,
-  UserRecord,
-  UserStatus,
-  UserSummary,
-} from './users.types';
-
-function stripPasswordHash(user: UserRecord): UserSummary {
-  const { passwordHash: _, ...safe } = user;
-  return safe;
-}
-
-const USERS: UserRecord[] = [
-  {
-    id: 1,
-    nickname: '강도윤',
-    email: 'doyun.kang@example.com',
-    passwordHash: '$2b$12$tQYVwi1zPaGwBo3MxKtPOuVqR8sNdEfGhIjKlMnOpQrStUvWxYz',
-    status: 'ACTIVE',
-    sessionCount: 12,
-    lastActiveAt: '2026-02-27',
-    joinedAt: '2026-02-14',
-  },
-  {
-    id: 2,
-    nickname: '최유진',
-    email: 'yujin.choi@example.com',
-    passwordHash: '$2b$12$RoTtU9xNyEuZmAbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFf',
-    status: 'ACTIVE',
-    sessionCount: 31,
-    lastActiveAt: '2026-02-27',
-    joinedAt: '2026-02-01',
-  },
-  {
-    id: 3,
-    nickname: '윤하은',
-    email: 'haeun.yoon@example.com',
-    passwordHash: '$2b$12$UrliwX2a0bHxCpDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVv',
-    status: 'ACTIVE',
-    sessionCount: 9,
-    lastActiveAt: '2026-02-25',
-    joinedAt: '2026-01-28',
-  },
-  {
-    id: 4,
-    nickname: '이서연',
-    email: 'seoyeon.lee@example.com',
-    passwordHash: '$2b$12$PmNqR7vLwCsXkYzAbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEe',
-    status: 'ACTIVE',
-    sessionCount: 18,
-    lastActiveAt: '2026-02-26',
-    joinedAt: '2026-01-12',
-  },
-  {
-    id: 5,
-    nickname: '김민준',
-    email: 'minjun.kim@example.com',
-    passwordHash: '$2b$12$LxZaHvM9kGpZJAbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFf',
-    status: 'ACTIVE',
-    sessionCount: 24,
-    lastActiveAt: '2026-02-27',
-    joinedAt: '2026-01-05',
-  },
-  {
-    id: 6,
-    nickname: '박준혁',
-    email: 'junhyuk.park@example.com',
-    passwordHash: '$2b$12$QnOsS8wMxDtY1AbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFf',
-    status: 'WARNING',
-    sessionCount: 7,
-    lastActiveAt: '2026-02-24',
-    joinedAt: '2025-12-20',
-  },
-  {
-    id: 7,
-    nickname: '임서준',
-    email: 'seojun.lim@example.com',
-    passwordHash: '$2b$12$VsXxY3bRc1yDqAbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFf',
-    status: 'WARNING',
-    sessionCount: 5,
-    lastActiveAt: '2026-02-22',
-    joinedAt: '2025-12-05',
-  },
-  {
-    id: 8,
-    nickname: '정다현',
-    email: 'dahyun.jung@example.com',
-    passwordHash: '$2b$12$SpUuV0y0zFvAnAbCdEfGhIjKlMnOpQrStUvWxYzAaBbCcDdEeFf',
-    status: 'SUSPENDED',
-    sessionCount: 3,
-    lastActiveAt: '2026-02-10',
-    joinedAt: '2025-11-15',
-  },
-];
-
-const SANCTIONS: Map<number, Sanction[]> = new Map([
-  [
-    6,
-    [
-      {
-        id: 'sanction_001',
-        type: 'WARNING',
-        reason: '반복적인 부적절한 답변',
-        createdAt: '2026-02-10T09:00:00Z',
-      },
-    ],
-  ],
-  [
-    8,
-    [
-      {
-        id: 'sanction_002',
-        type: 'WARNING',
-        reason: '반복적인 부적절한 답변',
-        createdAt: '2026-01-20T09:00:00Z',
-      },
-      {
-        id: 'sanction_003',
-        type: 'SUSPENDED',
-        reason: '서비스 약관 위반',
-        createdAt: '2026-02-01T14:00:00Z',
-      },
-    ],
-  ],
-]);
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { UserEntity, type UserStatus } from './entities/user.entity';
+import { SanctionEntity } from './entities/sanction.entity';
+import type { ListUsersQueryDto } from './dto/list-users-query.dto';
+import type { UpdateUserStatusDto } from './dto/update-user-status.dto';
 
 @Injectable()
 export class UsersService {
-  listUsers(query: ListUsersQuery) {
-    const search = query.search?.trim().toLowerCase();
-    const status = this.parseStatus(query.status);
-    const sortBy = query.sortBy ?? 'joinedAt';
-    const sortOrder = query.sortOrder ?? 'desc';
-    const page = Math.max(1, parseInt(query.page ?? '1', 10));
-    const limit = Math.min(100, Math.max(1, parseInt(query.limit ?? '20', 10)));
+  constructor(
+    @InjectRepository(UserEntity)
+    private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(SanctionEntity)
+    private readonly sanctionRepo: Repository<SanctionEntity>,
+  ) {}
 
-    const filtered = USERS.filter((user) => {
-      const isStatusMatch = status ? user.status === status : true;
-      const isSearchMatch = search
-        ? user.nickname.toLowerCase().includes(search) ||
-          user.email.toLowerCase().includes(search)
-        : true;
-      return isStatusMatch && isSearchMatch;
-    });
+  async listUsers(query: ListUsersQueryDto) {
+    const { status, search, sortBy, sortOrder, page, limit } = query;
 
-    filtered.sort((a, b) => {
-      const left = a[sortBy];
-      const right = b[sortBy];
-      if (left === right) return 0;
-      return (left > right ? 1 : -1) * (sortOrder === 'asc' ? 1 : -1);
-    });
+    const qb = this.userRepo.createQueryBuilder('user');
 
-    const start = (page - 1) * limit;
-    const items = filtered.slice(start, start + limit).map(stripPasswordHash);
+    if (status) {
+      qb.andWhere('user.status = :status', { status });
+    }
+    if (search) {
+      qb.andWhere(
+        '(user.nickname ILIKE :search OR user.email ILIKE :search)',
+        { search: `%${search}%` },
+      );
+    }
+
+    const totalCount = await this.userRepo.count();
+    const filteredCount = await qb.getCount();
+
+    qb.orderBy(`user.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
+    qb.skip((page - 1) * limit).take(limit);
+
+    const items = await qb.getMany();
 
     return {
-      totalCount: USERS.length,
-      filteredCount: filtered.length,
+      totalCount,
+      filteredCount,
       page,
       limit,
-      items,
+      items: items.map((u) => ({
+        id: u.id,
+        nickname: u.nickname,
+        email: u.email,
+        provider: u.provider,
+        status: u.status,
+        createdAt: u.createdAt,
+        updatedAt: u.updatedAt,
+      })),
     };
   }
 
-  getUserById(id: number): UserDetail {
-    const user = USERS.find((u) => u.id === id);
+  async getUserById(id: number) {
+    const user = await this.userRepo.findOne({
+      where: { id },
+      relations: ['sanctions'],
+    });
     if (!user) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
         message: '해당 유저를 찾을 수 없습니다.',
       });
     }
-    return { ...stripPasswordHash(user), sanctions: SANCTIONS.get(id) ?? [] };
+    return {
+      id: user.id,
+      nickname: user.nickname,
+      email: user.email,
+      provider: user.provider,
+      status: user.status,
+      withdrawnAt: user.withdrawnAt,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      sanctions: user.sanctions.map((s) => ({
+        id: s.id,
+        type: s.type,
+        reason: s.reason,
+        createdAt: s.createdAt,
+      })),
+    };
   }
 
-  updateUserStatus(id: number, dto: UpdateUserStatusDto) {
-    const user = USERS.find((u) => u.id === id);
+  async updateUserStatus(id: number, dto: UpdateUserStatusDto) {
+    const user = await this.userRepo.findOneBy({ id });
     if (!user) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
@@ -193,63 +100,73 @@ export class UsersService {
     this.validateStatusTransition(user.status, dto.status);
 
     user.status = dto.status;
+    if (dto.status === 'WITHDREW') {
+      user.withdrawnAt = new Date();
+    }
+    await this.userRepo.save(user);
 
-    const sanctions = SANCTIONS.get(id) ?? [];
-    sanctions.push({
-      id: `sanction_${Date.now()}`,
+    const sanction = this.sanctionRepo.create({
       type: dto.status,
       reason: dto.reason ?? null,
-      createdAt: new Date().toISOString(),
+      userId: id,
     });
-    SANCTIONS.set(id, sanctions);
+    await this.sanctionRepo.save(sanction);
 
     return {
       id: user.id,
       status: user.status,
-      updatedAt: new Date().toISOString(),
+      updatedAt: user.updatedAt,
     };
   }
 
-  getUserSanctions(id: number) {
-    const user = USERS.find((u) => u.id === id);
+  async getUserSanctions(id: number) {
+    const user = await this.userRepo.findOneBy({ id });
     if (!user) {
       throw new NotFoundException({
         code: 'USER_NOT_FOUND',
         message: '해당 유저를 찾을 수 없습니다.',
       });
     }
-    return { items: SANCTIONS.get(id) ?? [] };
+
+    const items = await this.sanctionRepo.find({
+      where: { userId: id },
+      order: { createdAt: 'DESC' },
+    });
+
+    return {
+      items: items.map((s) => ({
+        id: s.id,
+        type: s.type,
+        reason: s.reason,
+        createdAt: s.createdAt,
+      })),
+    };
   }
 
-  private validateStatusTransition(
-    current: UserStatus,
-    next: UserStatus,
-  ): void {
+  private validateStatusTransition(current: UserStatus, next: UserStatus): void {
     if (current === next) {
       const labels: Record<UserStatus, string> = {
         ACTIVE: '활동',
-        WARNING: '경고',
-        SUSPENDED: '정지',
+        WARNED: '경고',
+        BANNED: '정지',
+        WITHDREW: '탈퇴',
       };
       throw new BadRequestException({
         code: 'INVALID_STATUS_TRANSITION',
         message: `이미 ${labels[current]} 상태인 유저입니다.`,
       });
     }
-
-    if (current === 'SUSPENDED' && next === 'WARNING') {
+    if (current === 'BANNED' && next === 'WARNED') {
       throw new BadRequestException({
         code: 'INVALID_STATUS_TRANSITION',
-        message:
-          '정지 상태에서 경고로 직접 변경할 수 없습니다. 먼저 활동 복구 후 경고를 부여하세요.',
+        message: '정지 상태에서 경고로 직접 변경할 수 없습니다. 먼저 활동 복구 후 경고를 부여하세요.',
       });
     }
-  }
-
-  private parseStatus(value?: string): UserStatus | undefined {
-    if (!value) return undefined;
-    const v = value.toUpperCase();
-    if (v === 'ACTIVE' || v === 'WARNING' || v === 'SUSPENDED') return v;
-    return undefined;
+    if (current === 'WITHDREW') {
+      throw new BadRequestException({
+        code: 'INVALID_STATUS_TRANSITION',
+        message: '탈퇴한 유저의 상태를 변경할 수 없습니다.',
+      });
+    }
   }
 }
