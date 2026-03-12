@@ -41,6 +41,6 @@ async function bootstrap() {
 
   app.enableShutdownHooks(); // Consul 서비스 해제(deregister)를 위해 필요
 
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3002);
 }
 bootstrap();

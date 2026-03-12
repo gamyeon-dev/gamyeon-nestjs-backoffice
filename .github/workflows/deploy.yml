@@ -36,7 +36,7 @@ jobs:
             cd /home/ec2-user/backoffice
 
             # 1. GitHub Secrets 값으로 .env 파일 생성 (덮어쓰기)
-            echo "PORT=3000" > .env
+            echo "PORT=3002" > .env
             echo "ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}" >> .env
             echo "ADMIN_PASSWORD_HASH=${{ secrets.ADMIN_PASSWORD_HASH }}" >> .env
             echo "JWT_SECRET=${{ secrets.BACKOFFICE_JWT_SECRET }}" >> .env
@@ -70,7 +70,7 @@ jobs:
                 env_file:
                   - .env
                 ports:
-                  - "3000:3000"
+                  - "3002:3002"
                 restart: unless-stopped
                 networks:
                   - gamyeon-net
