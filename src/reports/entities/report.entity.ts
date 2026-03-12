@@ -24,7 +24,7 @@ export class ReportEntity {
   @Column({ name: 'user_id', type: 'bigint' })
   userId!: number;
 
-  @Column({ name: 'job_category', nullable: true })
+  @Column({ name: 'job_category', type: 'varchar', nullable: true })
   jobCategory!: string | null;
 
   @Column({

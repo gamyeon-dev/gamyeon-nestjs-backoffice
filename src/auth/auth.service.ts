@@ -9,7 +9,12 @@ export class AuthService {
 
   async login(
     dto: LoginDto,
-  ): Promise<{ accessToken: string; expiresIn: number }> {
+  ): Promise<{
+    accessToken: string;
+    expiresIn: number;
+    refreshToken: string;
+    refreshExpiresIn: number;
+  }> {
     const adminEmail = process.env.ADMIN_EMAIL;
     const adminPasswordHash = process.env.ADMIN_PASSWORD_HASH;
 
@@ -25,12 +30,31 @@ export class AuthService {
       });
     }
 
-    const payload = { sub: 'super_admin', role: 'SUPER_ADMIN' };
-    const accessToken = this.jwtService.sign(payload);
+    return this.issueTokens();
+  }
 
-    const expiresIn = this.parseExpiresIn(process.env.JWT_EXPIRES_IN ?? '8h');
+  refresh(refreshToken: string) {
+    const refreshSecret =
+      process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET ?? 'fallback-secret';
 
-    return { accessToken, expiresIn };
+    let payload: { sub: string; role: string; type?: string };
+    try {
+      payload = this.jwtService.verify(refreshToken, { secret: refreshSecret });
+    } catch {
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: '리프레시 토큰이 유효하지 않습니다.',
+      });
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException({
+        code: 'INVALID_REFRESH_TOKEN',
+        message: '리프레시 토큰이 유효하지 않습니다.',
+      });
+    }
+
+    return this.issueTokens();
   }
 
   getMe(): { email: string; role: string } {
@@ -38,6 +62,30 @@ export class AuthService {
       email: process.env.ADMIN_EMAIL ?? '',
       role: 'SUPER_ADMIN',
     };
+  }
+
+  private issueTokens() {
+    const accessPayload = { sub: 'super_admin', role: 'SUPER_ADMIN' };
+    const refreshPayload = {
+      sub: 'super_admin',
+      role: 'SUPER_ADMIN',
+      type: 'refresh',
+    };
+
+    const accessToken = this.jwtService.sign(accessPayload);
+    const refreshSecret =
+      process.env.JWT_REFRESH_SECRET ?? process.env.JWT_SECRET ?? 'fallback-secret';
+    const refreshExpiresIn = this.parseExpiresIn(
+      process.env.JWT_REFRESH_EXPIRES_IN ?? '14d',
+    );
+    const refreshToken = this.jwtService.sign(refreshPayload, {
+      secret: refreshSecret,
+      expiresIn: refreshExpiresIn,
+    });
+
+    const expiresIn = this.parseExpiresIn(process.env.JWT_EXPIRES_IN ?? '8h');
+
+    return { accessToken, expiresIn, refreshToken, refreshExpiresIn };
   }
 
   private parseExpiresIn(expiresIn: string): number {
@@ -53,4 +101,5 @@ export class AuthService {
     };
     return value * (multipliers[unit] ?? 1);
   }
+
 }

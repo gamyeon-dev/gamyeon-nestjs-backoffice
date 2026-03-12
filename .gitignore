@@ -22,6 +22,8 @@ node_modules/
 docs/
 !docs/README-initial.md
 !docs/admin-backoffice-scope.md
+!docs/api-specification.md
+!docs/02-auth.md
 
 # ========================
 # 로그
