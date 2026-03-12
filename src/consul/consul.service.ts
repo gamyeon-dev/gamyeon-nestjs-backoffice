@@ -5,24 +5,24 @@ import {
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as Consul from 'consul';
+import Consul from 'consul';
 
 @Injectable()
 export class ConsulService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(ConsulService.name);
-  private client: Consul.Consul;
+  private client: InstanceType<typeof Consul>;
   private serviceId: string;
 
   constructor(private readonly config: ConfigService) {}
 
   async onModuleInit() {
     const consulHost = this.config.get<string>('CONSUL_HOST', 'localhost');
-    const consulPort = parseInt(this.config.get<string>('CONSUL_PORT', '8500'), 10);
+    const consulPort = this.config.get<string>('CONSUL_PORT', '8500');
     const serviceName = this.config.get<string>(
       'CONSUL_SERVICE_NAME',
       'GAMYEON_BACKOFFICE_SERVER',
     );
-    const servicePort = parseInt(this.config.get<string>('PORT', '3000'), 10);
+    const servicePort = parseInt(this.config.get<string>('PORT', '3002'), 10);
     const serviceAddress = this.config.get<string>(
       'CONSUL_SERVICE_ADDRESS',
       'localhost',
