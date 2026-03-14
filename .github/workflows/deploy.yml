@@ -3,6 +3,13 @@ name: Backoffice CI/CD
 on:
   push:
     branches: [ "dev" ] # 배포 대상 브랜치
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: gamyeon-backoffice
 
 jobs:
   deploy:
@@ -20,8 +27,8 @@ jobs:
       # 2. Docker 이미지 빌드 및 푸시
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
 
       # 3. EC2 접속 및 배포 실행
       - name: Deploy to EC2
@@ -65,12 +72,40 @@ jobs:
               CONSUL_KV_PREFIX=gamyeon/backoffice/
             fi
 
+            CONSUL_KV_ENABLED="${{ secrets.CONSUL_KV_ENABLED }}"
+            if [ -z "$CONSUL_KV_ENABLED" ]; then
+              CONSUL_KV_ENABLED=true
+            fi
+
+            CONSUL_KV_OVERRIDE="${{ secrets.CONSUL_KV_OVERRIDE }}"
+            if [ -z "$CONSUL_KV_OVERRIDE" ]; then
+              CONSUL_KV_OVERRIDE=false
+            fi
+
+            CONSUL_KV_TIMEOUT_MS="${{ secrets.CONSUL_KV_TIMEOUT_MS }}"
+            if [ -z "$CONSUL_KV_TIMEOUT_MS" ]; then
+              CONSUL_KV_TIMEOUT_MS=3000
+            fi
+
+            CONSUL_KV_REQUIRED="${{ secrets.CONSUL_KV_REQUIRED }}"
+            if [ -z "$CONSUL_KV_REQUIRED" ]; then
+              CONSUL_KV_REQUIRED=false
+            fi
+
+            ALLOW_MOCK_ADMIN="${{ secrets.ALLOW_MOCK_ADMIN }}"
+            if [ -z "$ALLOW_MOCK_ADMIN" ]; then
+              ALLOW_MOCK_ADMIN=false
+            fi
+
             # 1. GitHub Secrets 값으로 .env 파일 생성 (덮어쓰기)
             echo "PORT=$BACKOFFICE_PORT" > .env
             echo "ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}" >> .env
             echo "ADMIN_PASSWORD_HASH=${{ secrets.ADMIN_PASSWORD_HASH }}" >> .env
             echo "JWT_SECRET=${{ secrets.BACKOFFICE_JWT_SECRET }}" >> .env
             echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" >> .env
+            echo "JWT_REFRESH_SECRET=${{ secrets.BACKOFFICE_JWT_REFRESH_SECRET }}" >> .env
+            echo "JWT_REFRESH_EXPIRES_IN=${{ secrets.JWT_REFRESH_EXPIRES_IN }}" >> .env
+            echo "ALLOW_MOCK_ADMIN=$ALLOW_MOCK_ADMIN" >> .env
             echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
             echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
             echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> .env
@@ -85,23 +120,26 @@ jobs:
             echo "S3_BUCKET=${{ secrets.BACKOFFICE_S3_BUCKET }}" >> .env
             echo "S3_ACCESS_KEY_ID=${{ secrets.BACKOFFICE_S3_ACCESS_KEY_ID }}" >> .env
             echo "S3_SECRET_ACCESS_KEY=${{ secrets.BACKOFFICE_S3_SECRET_ACCESS_KEY }}" >> .env
+            echo "S3_ENDPOINT=${{ secrets.BACKOFFICE_S3_ENDPOINT }}" >> .env
+            echo "S3_FORCE_PATH_STYLE=${{ secrets.BACKOFFICE_S3_FORCE_PATH_STYLE }}" >> .env
+            echo "S3_PUBLIC_BASE_URL=${{ secrets.BACKOFFICE_S3_PUBLIC_BASE_URL }}" >> .env
             echo "FRONTEND_URL=${{ secrets.BACKOFFICE_FRONTEND_URL }}" >> .env
             echo "CONSUL_HOST=$CONSUL_HOST" >> .env
             echo "CONSUL_PORT=$CONSUL_PORT" >> .env
             echo "CONSUL_SERVICE_NAME=$CONSUL_SERVICE_NAME" >> .env
             echo "CONSUL_SERVICE_ADDRESS=$CONSUL_SERVICE_ADDRESS" >> .env
-            echo "CONSUL_KV_ENABLED=true" >> .env
+            echo "CONSUL_KV_ENABLED=$CONSUL_KV_ENABLED" >> .env
             echo "CONSUL_KV_PREFIX=$CONSUL_KV_PREFIX" >> .env
-            echo "CONSUL_KV_OVERRIDE=false" >> .env
-            echo "CONSUL_KV_TIMEOUT_MS=3000" >> .env
-            echo "CONSUL_KV_REQUIRED=false" >> .env
+            echo "CONSUL_KV_OVERRIDE=$CONSUL_KV_OVERRIDE" >> .env
+            echo "CONSUL_KV_TIMEOUT_MS=$CONSUL_KV_TIMEOUT_MS" >> .env
+            echo "CONSUL_KV_REQUIRED=$CONSUL_KV_REQUIRED" >> .env
             echo "CONSUL_HTTP_TOKEN=${{ secrets.CONSUL_HTTP_TOKEN }}" >> .env
 
             # 2. docker-compose.yml 생성
             cat > docker-compose.yml << EOF
             services:
               backoffice-api:
-                image: ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+                image: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
                 container_name: backoffice-api
                 env_file:
                   - .env
@@ -118,9 +156,11 @@ jobs:
             # 3. Docker Hub 로그인 후 최신 이미지 풀 & 컨테이너 재시작
             docker network create gamyeon-net || true
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
-            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/gamyeon-backoffice:latest
+            docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             if command -v docker-compose >/dev/null 2>&1; then
               docker-compose up -d --no-deps backoffice-api
+              docker-compose ps
             else
               docker compose up -d --no-deps backoffice-api
+              docker compose ps
             fi

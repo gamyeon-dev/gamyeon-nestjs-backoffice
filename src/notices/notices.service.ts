@@ -12,6 +12,10 @@ import { ListNoticesQueryDto } from './dto/list-notices-query.dto.js';
 import { CreateNoticeDto } from './dto/create-notice.dto.js';
 import { UpdateNoticeDto } from './dto/update-notice.dto.js';
 import { AddNoticeImageDto } from './dto/add-notice-image.dto.js';
+import {
+  DEFAULT_NOTICE_CATEGORY,
+  DEFAULT_NOTICE_STATUS,
+} from './notices.constants.js';
 
 @Injectable()
 export class NoticesService {
@@ -34,6 +38,12 @@ export class NoticesService {
         '(notice.title ILIKE :search OR notice.content ILIKE :search)',
         { search: `%${query.search}%` },
       );
+    }
+    if (query.category) {
+      qb.andWhere('notice.category = :category', { category: query.category });
+    }
+    if (query.status) {
+      qb.andWhere('notice.status = :status', { status: query.status });
     }
 
     if (query.from) {
@@ -76,6 +86,8 @@ export class NoticesService {
     const notice = this.noticeRepo.create({
       title: dto.title.trim(),
       content: dto.content.trim(),
+      category: dto.category ?? DEFAULT_NOTICE_CATEGORY,
+      status: dto.status ?? DEFAULT_NOTICE_STATUS,
     });
     return this.noticeRepo.save(notice);
   }
@@ -85,6 +97,8 @@ export class NoticesService {
 
     if (dto.title !== undefined) notice.title = dto.title.trim();
     if (dto.content !== undefined) notice.content = dto.content.trim();
+    if (dto.category !== undefined) notice.category = dto.category;
+    if (dto.status !== undefined) notice.status = dto.status;
 
     return this.noticeRepo.save(notice);
   }

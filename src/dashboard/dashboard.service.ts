@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UserEntity } from '../users/entities/user.entity.js';
+import { QuestionEntity } from '../questions/entities/question.entity.js';
 import { NoticeEntity } from '../notices/entities/notice.entity.js';
 import { InterviewEntity } from '../interviews/entities/interview.entity.js';
 import { ReportEntity } from '../reports/entities/report.entity.js';
@@ -11,6 +12,8 @@ export class DashboardService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepo: Repository<UserEntity>,
+    @InjectRepository(QuestionEntity)
+    private readonly questionRepo: Repository<QuestionEntity>,
     @InjectRepository(NoticeEntity)
     private readonly noticeRepo: Repository<NoticeEntity>,
     @InjectRepository(InterviewEntity)
@@ -22,6 +25,9 @@ export class DashboardService {
   async getKpi() {
     const totalUsers = await this.userRepo.count();
     const totalNotices = await this.noticeRepo.count();
+    const activeQuestions = await this.questionRepo.count({
+      where: { status: 'ACTIVE' },
+    });
 
     const interviewStatusCounts = await this.interviewRepo
       .createQueryBuilder('intv')
@@ -47,6 +53,7 @@ export class DashboardService {
 
     return {
       totalUsers: { value: totalUsers },
+      activeQuestions: { value: activeQuestions },
       totalNotices: { value: totalNotices },
       pausedInterviews: { value: pausedCount },
       analyzingReports: { value: analyzingReports },
