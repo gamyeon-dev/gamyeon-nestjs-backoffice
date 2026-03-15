@@ -69,7 +69,7 @@ jobs:
 
             CONSUL_KV_PREFIX="${{ secrets.CONSUL_KV_PREFIX }}"
             if [ -z "$CONSUL_KV_PREFIX" ]; then
-              CONSUL_KV_PREFIX=gamyeon/backoffice/
+              CONSUL_KV_PREFIX=backoffice-server/
             fi
 
             CONSUL_KV_ENABLED="${{ secrets.CONSUL_KV_ENABLED }}"
@@ -97,43 +97,17 @@ jobs:
               ALLOW_MOCK_ADMIN=false
             fi
 
-            # 1. GitHub Secrets 값으로 .env 파일 생성 (덮어쓰기)
+            # 1. Bootstrap env only: runtime app config is loaded from Consul KV
             echo "PORT=$BACKOFFICE_PORT" > .env
-            echo "ADMIN_EMAIL=${{ secrets.ADMIN_EMAIL }}" >> .env
-            echo "ADMIN_PASSWORD_HASH=${{ secrets.ADMIN_PASSWORD_HASH }}" >> .env
-            echo "JWT_SECRET=${{ secrets.BACKOFFICE_JWT_SECRET }}" >> .env
-            echo "JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}" >> .env
-            echo "JWT_REFRESH_SECRET=${{ secrets.BACKOFFICE_JWT_REFRESH_SECRET }}" >> .env
-            echo "JWT_REFRESH_EXPIRES_IN=${{ secrets.JWT_REFRESH_EXPIRES_IN }}" >> .env
-            echo "ALLOW_MOCK_ADMIN=$ALLOW_MOCK_ADMIN" >> .env
-            echo "DB_HOST=${{ secrets.DB_HOST }}" >> .env
-            echo "DB_PORT=${{ secrets.DB_PORT }}" >> .env
-            echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> .env
-            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
-            echo "DB_DATABASE=${{ secrets.DB_DATABASE }}" >> .env
-            echo "DB_SSL=${{ secrets.DB_SSL }}" >> .env
-            echo "DB_SSL_REJECT_UNAUTHORIZED=${{ secrets.DB_SSL_REJECT_UNAUTHORIZED }}" >> .env
-            echo "DB_SYNCHRONIZE=false" >> .env
-            echo "DB_LOGGING=false" >> .env
-            echo "DB_MIGRATIONS_RUN=true" >> .env
-            echo "S3_REGION=${{ secrets.BACKOFFICE_S3_REGION }}" >> .env
-            echo "S3_BUCKET=${{ secrets.BACKOFFICE_S3_BUCKET }}" >> .env
-            echo "S3_ACCESS_KEY_ID=${{ secrets.BACKOFFICE_S3_ACCESS_KEY_ID }}" >> .env
-            echo "S3_SECRET_ACCESS_KEY=${{ secrets.BACKOFFICE_S3_SECRET_ACCESS_KEY }}" >> .env
-            echo "S3_ENDPOINT=${{ secrets.BACKOFFICE_S3_ENDPOINT }}" >> .env
-            echo "S3_FORCE_PATH_STYLE=${{ secrets.BACKOFFICE_S3_FORCE_PATH_STYLE }}" >> .env
-            echo "S3_PUBLIC_BASE_URL=${{ secrets.BACKOFFICE_S3_PUBLIC_BASE_URL }}" >> .env
-            echo "FRONTEND_URL=${{ secrets.BACKOFFICE_FRONTEND_URL }}" >> .env
             echo "CONSUL_HOST=$CONSUL_HOST" >> .env
             echo "CONSUL_PORT=$CONSUL_PORT" >> .env
-            echo "CONSUL_SERVICE_NAME=$CONSUL_SERVICE_NAME" >> .env
-            echo "CONSUL_SERVICE_ADDRESS=$CONSUL_SERVICE_ADDRESS" >> .env
             echo "CONSUL_KV_ENABLED=$CONSUL_KV_ENABLED" >> .env
             echo "CONSUL_KV_PREFIX=$CONSUL_KV_PREFIX" >> .env
-            echo "CONSUL_KV_OVERRIDE=$CONSUL_KV_OVERRIDE" >> .env
+            echo "CONSUL_KV_OVERRIDE=true" >> .env
             echo "CONSUL_KV_TIMEOUT_MS=$CONSUL_KV_TIMEOUT_MS" >> .env
-            echo "CONSUL_KV_REQUIRED=$CONSUL_KV_REQUIRED" >> .env
+            echo "CONSUL_KV_REQUIRED=true" >> .env
             echo "CONSUL_HTTP_TOKEN=${{ secrets.CONSUL_HTTP_TOKEN }}" >> .env
+            echo "ALLOW_MOCK_ADMIN=$ALLOW_MOCK_ADMIN" >> .env
 
             # 2. docker-compose.yml 생성
             cat > docker-compose.yml << EOF

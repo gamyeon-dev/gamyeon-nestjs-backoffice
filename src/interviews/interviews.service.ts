@@ -42,9 +42,9 @@ export class InterviewsService {
     const totalCount = await this.interviewRepo.count();
 
     const columnMap: Record<string, string> = {
-      createdAt: 'intv.created_at',
-      startedAt: 'intv.started_at',
-      durationSeconds: 'intv.duration_seconds',
+      createdAt: 'intv.createdAt',
+      startedAt: 'intv.startedAt',
+      durationSeconds: 'intv.durationSeconds',
     };
     qb.orderBy(
       columnMap[sortBy] ?? 'intv.created_at',

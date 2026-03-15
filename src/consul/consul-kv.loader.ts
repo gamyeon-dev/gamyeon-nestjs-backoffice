@@ -17,6 +17,10 @@ function parseBoolean(value: string | undefined, fallback: boolean): boolean {
   return value.toLowerCase() === 'true';
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function toEnvKey(relativeKey: string): string {
   if (/^[A-Z0-9_]+$/.test(relativeKey)) {
     return relativeKey;
@@ -28,6 +32,58 @@ function toEnvKey(relativeKey: string): string {
     .replace(/[^a-zA-Z0-9_]/g, '_')
     .replace(/_+/g, '_')
     .toUpperCase();
+}
+
+function mapJsonEntryToEnvKey(relativeKey: string, jsonKey: string): string {
+  const normalizedJsonKey = toEnvKey(jsonKey);
+
+  if (relativeKey === 'settings' && normalizedJsonKey === 'SERVICE_ADDRESS') {
+    return 'CONSUL_SERVICE_ADDRESS';
+  }
+
+  return normalizedJsonKey;
+}
+
+function applyEnvValue(
+  envKey: string,
+  rawValue: unknown,
+  override: boolean,
+  result: ConsulKvLoadResult,
+) {
+  if (rawValue === null || rawValue === undefined) {
+    return;
+  }
+
+  if (!override && process.env[envKey] !== undefined) {
+    result.skippedCount += 1;
+    return;
+  }
+
+  process.env[envKey] = typeof rawValue === 'string' ? rawValue : String(rawValue);
+  result.loadedCount += 1;
+  result.appliedKeys.push(envKey);
+}
+
+function applyJsonObjectToEnv(
+  relativeKey: string,
+  value: Record<string, unknown>,
+  override: boolean,
+  result: ConsulKvLoadResult,
+) {
+  for (const [jsonKey, jsonValue] of Object.entries(value)) {
+    if (isPlainObject(jsonValue)) {
+      applyJsonObjectToEnv(
+        `${relativeKey}/${jsonKey}`,
+        jsonValue,
+        override,
+        result,
+      );
+      continue;
+    }
+
+    const envKey = mapJsonEntryToEnvKey(relativeKey, jsonKey);
+    applyEnvValue(envKey, jsonValue, override, result);
+  }
 }
 
 function buildKvUrl(consulHost: string, consulPort: string, prefix: string): string {
@@ -76,9 +132,11 @@ export async function loadConsulKvToEnv(): Promise<ConsulKvLoadResult> {
     const items = (await response.json()) as ConsulKvItem[];
     const normalizedPrefix = prefix.endsWith('/') ? prefix : `${prefix}/`;
 
-    let loadedCount = 0;
-    let skippedCount = 0;
-    const appliedKeys: string[] = [];
+    const result: ConsulKvLoadResult = {
+      loadedCount: 0,
+      skippedCount: 0,
+      appliedKeys: [],
+    };
 
     for (const item of items) {
       if (!item.Value) {
@@ -93,22 +151,27 @@ export async function loadConsulKvToEnv(): Promise<ConsulKvLoadResult> {
         continue;
       }
 
-      const envKey = toEnvKey(relativeKey);
-      if (!override && process.env[envKey] !== undefined) {
-        skippedCount += 1;
-        continue;
+      const decodedValue = Buffer.from(item.Value, 'base64').toString('utf8');
+
+      try {
+        const parsedValue = JSON.parse(decodedValue) as unknown;
+        if (isPlainObject(parsedValue)) {
+          applyJsonObjectToEnv(relativeKey, parsedValue, override, result);
+          continue;
+        }
+      } catch {
+        // Treat non-JSON values as flat KV entries.
       }
 
-      process.env[envKey] = Buffer.from(item.Value, 'base64').toString('utf8');
-      loadedCount += 1;
-      appliedKeys.push(envKey);
+      const envKey = toEnvKey(relativeKey);
+      applyEnvValue(envKey, decodedValue, override, result);
     }
 
     console.log(
-      `[ConsulKV] Loaded ${loadedCount} keys from "${prefix}" (${skippedCount} skipped)`,
+      `[ConsulKV] Loaded ${result.loadedCount} keys from "${prefix}" (${result.skippedCount} skipped)`,
     );
 
-    return { loadedCount, skippedCount, appliedKeys };
+    return result;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     if (required) {
