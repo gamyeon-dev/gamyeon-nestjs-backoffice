@@ -32,6 +32,8 @@ cp .env.example .env
 | `JWT_EXPIRES_IN` | 토큰 만료 시간 | `8h` |
 | `PORT` | 서버 포트 | `3002` |
 | `FRONTEND_URL` | 프론트엔드 URL (CORS) | `http://localhost:3001` |
+| `AWS_REGION` | Secrets Manager를 읽을 AWS 리전 | `ap-northeast-2` |
+| `DB_SECRET_ID` | DB 자격증명이 들어있는 Secrets Manager ID | - |
 
 ### 3. 실행
 
@@ -49,6 +51,30 @@ npm run start:prod
 ```bash
 npm run test
 ```
+
+## 운영 시크릿 관리
+
+운영 환경에서는 `DB_PASSWORD`를 `.env`나 Consul KV 대신 AWS Secrets Manager에서 읽을 수 있습니다.
+
+1. Secrets Manager에 JSON 시크릿을 생성합니다.
+
+```json
+{
+  "DB_USERNAME": "gamyeon_backoffice",
+  "DB_PASSWORD": "change-me"
+}
+```
+
+2. 앱 부트스트랩 env에 아래 값을 설정합니다.
+
+```env
+AWS_REGION=ap-northeast-2
+DB_SECRET_ID=prod/gamyeon/backoffice/db
+```
+
+3. EC2 인스턴스 역할에 `secretsmanager:GetSecretValue` 권한을 추가합니다.
+
+앱은 시작 시 `Consul KV -> Secrets Manager` 순서로 env를 로드하므로, 같은 키가 있으면 Secrets Manager 값이 최종 적용됩니다.
 
 ## API 엔드포인트
 

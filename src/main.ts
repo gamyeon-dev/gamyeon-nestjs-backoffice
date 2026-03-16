@@ -5,10 +5,12 @@ import { AppModule } from './app.module';
 import { ResponseInterceptor } from './common/interceptors/response.interceptor';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { loadConsulKvToEnv } from './consul/consul-kv.loader';
+import { loadSecretsManagerToEnv } from './secrets/secrets-manager.loader';
 
 async function bootstrap() {
   // Load Consul KV before creating the Nest application so ConfigModule can see merged envs.
   await loadConsulKvToEnv();
+  await loadSecretsManagerToEnv();
 
   const app = await NestFactory.create(AppModule);
 

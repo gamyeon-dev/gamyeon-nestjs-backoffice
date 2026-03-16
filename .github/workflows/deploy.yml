@@ -97,8 +97,17 @@ jobs:
               ALLOW_MOCK_ADMIN=false
             fi
 
+            APP_AWS_REGION="${{ secrets.APP_AWS_REGION }}"
+            if [ -z "$APP_AWS_REGION" ]; then
+              APP_AWS_REGION=ap-northeast-2
+            fi
+
+            DB_SECRET_ID="${{ secrets.DB_SECRET_ID }}"
+
             # 1. Bootstrap env only: runtime app config is loaded from Consul KV
             echo "PORT=$BACKOFFICE_PORT" > .env
+            echo "AWS_REGION=$APP_AWS_REGION" >> .env
+            echo "DB_SECRET_ID=$DB_SECRET_ID" >> .env
             echo "CONSUL_HOST=$CONSUL_HOST" >> .env
             echo "CONSUL_PORT=$CONSUL_PORT" >> .env
             echo "CONSUL_KV_ENABLED=$CONSUL_KV_ENABLED" >> .env
