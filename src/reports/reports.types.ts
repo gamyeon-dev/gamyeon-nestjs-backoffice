@@ -8,7 +8,7 @@ export interface ReportUser {
 
 export interface ReportSummary {
   reportId: string;
-  interviewId: string;
+  intvId: string;
   user: ReportUser;
   jobCategory: string | null;
   status: ReportStatus;

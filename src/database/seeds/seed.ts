@@ -87,9 +87,9 @@ async function seed() {
 
   // === Reports ===
   const reportData: DeepPartial<ReportEntity>[] = [
-    { reportId: 'r001', interviewId: interviews[0]!.id, userId: users[0]!.id, jobCategory: '프론트엔드', status: 'COMPLETED', score: 88, feedback: '전반적으로 프론트엔드 역량이 잘 드러났습니다.', completedAt: new Date('2026-03-01T11:00:00Z') },
-    { reportId: 'r002', interviewId: interviews[1]!.id, userId: users[1]!.id, jobCategory: 'PM', status: 'COMPLETED', score: 74, feedback: '프로젝트 관리 역량은 좋으나 기술적 깊이가 부족합니다.', completedAt: new Date('2026-03-02T15:00:00Z') },
-    { reportId: 'r003', interviewId: interviews[2]!.id, userId: users[2]!.id, status: 'IN_PROGRESS' },
+    { reportId: 'r001', intvId: interviews[0]!.id, userId: users[0]!.id, jobCategory: '프론트엔드', status: 'COMPLETED', score: 88, feedback: '전반적으로 프론트엔드 역량이 잘 드러났습니다.', completedAt: new Date('2026-03-01T11:00:00Z') },
+    { reportId: 'r002', intvId: interviews[1]!.id, userId: users[1]!.id, jobCategory: 'PM', status: 'COMPLETED', score: 74, feedback: '프로젝트 관리 역량은 좋으나 기술적 깊이가 부족합니다.', completedAt: new Date('2026-03-02T15:00:00Z') },
+    { reportId: 'r003', intvId: interviews[2]!.id, userId: users[2]!.id, status: 'IN_PROGRESS' },
   ];
   const reports = await reportRepo.save(reportData);
   console.log(`Seeded ${reports.length} reports.`);

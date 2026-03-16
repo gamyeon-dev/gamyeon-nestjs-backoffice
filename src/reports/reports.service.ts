@@ -33,8 +33,8 @@ export class ReportsService {
     const totalCount = await this.reportRepo.count();
 
     const columnMap: Record<string, string> = {
-      completedAt: 'report.completed_at',
-      createdAt: 'report.created_at',
+      completedAt: 'report.completedAt',
+      createdAt: 'report.createdAt',
       score: 'report.score',
     };
     qb.orderBy(

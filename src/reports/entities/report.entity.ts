@@ -19,7 +19,7 @@ export class ReportEntity {
   reportId!: string;
 
   @Column({ name: 'interview_id', type: 'bigint' })
-  interviewId!: number;
+  intvId!: number;
 
   @Column({ name: 'user_id', type: 'bigint' })
   userId!: number;
