@@ -26,6 +26,8 @@ export interface QuestionResult {
 
 export interface ReportDetail extends ReportSummary {
   feedback: string | null;
+  strengths: string[];
+  improvements: string[];
   questionResults: QuestionResult[];
   createdAt: string;
 }

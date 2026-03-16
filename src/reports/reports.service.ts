@@ -3,6 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReportEntity } from './entities/report.entity.js';
 import { ListReportsQueryDto } from './dto/list-reports-query.dto.js';
+import { QuestionResultEntity } from './entities/question-result.entity.js';
+
+type ReportDetailResponse = ReportEntity & {
+  strengths: string[];
+  improvements: string[];
+};
 
 @Injectable()
 export class ReportsService {
@@ -49,7 +55,7 @@ export class ReportsService {
     return { totalCount, filteredCount, page, limit, items };
   }
 
-  async getReportById(reportId: string): Promise<ReportEntity> {
+  async getReportById(reportId: string): Promise<ReportDetailResponse> {
     const report = await this.reportRepo.findOne({
       where: { reportId },
       relations: ['user', 'questionResults'],
@@ -60,6 +66,58 @@ export class ReportsService {
         message: '해당 리포트를 찾을 수 없습니다.',
       });
     }
-    return report;
+
+    const strengths = this.buildStrengths(report.questionResults);
+    const improvements = this.buildImprovements(
+      report.questionResults,
+      strengths,
+    );
+
+    return {
+      ...report,
+      strengths,
+      improvements,
+    };
+  }
+
+  private buildStrengths(questionResults: QuestionResultEntity[]): string[] {
+    return questionResults
+      .filter((result) => result.score !== null && result.score >= 80)
+      .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+      .slice(0, 3)
+      .map((result) => result.feedback);
+  }
+
+  private buildImprovements(
+    questionResults: QuestionResultEntity[],
+    strengths: string[],
+  ): string[] {
+    const improvements = questionResults
+      .filter((result) => result.score !== null && result.score < 80)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .slice(0, 3)
+      .map((result) => result.feedback)
+      .filter((feedback) => !strengths.includes(feedback));
+
+    if (improvements.length > 0) {
+      return improvements;
+    }
+
+    const fallback = [...questionResults]
+      .filter((result) => result.score !== null)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))
+      .find((result) => !strengths.includes(result.feedback));
+
+    if (fallback) {
+      return [fallback.feedback];
+    }
+
+    const lowestScoreResult = [...questionResults]
+      .filter((result) => result.score !== null)
+      .sort((a, b) => (a.score ?? 0) - (b.score ?? 0))[0];
+
+    return lowestScoreResult
+      ? [`보완 필요: ${lowestScoreResult.feedback}`]
+      : [];
   }
 }

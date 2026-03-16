@@ -11,8 +11,12 @@ import { QuestionResultEntity } from '../../reports/entities/question-result.ent
 
 const dataSource = AppDataSource;
 
-async function seed() {
-  await dataSource.initialize();
+export async function seed() {
+  const shouldDestroy = !dataSource.isInitialized;
+
+  if (!dataSource.isInitialized) {
+    await dataSource.initialize();
+  }
   console.log('Database connected.');
 
   const userRepo = dataSource.getRepository(UserEntity);
@@ -27,7 +31,9 @@ async function seed() {
   const existingUsers = await userRepo.count();
   if (existingUsers > 0) {
     console.log('Users already seeded, skipping.');
-    await dataSource.destroy();
+    if (shouldDestroy) {
+      await dataSource.destroy();
+    }
     return;
   }
 
@@ -103,10 +109,14 @@ async function seed() {
   console.log(`Seeded ${qResults.length} question results.`);
 
   console.log('Seeding complete!');
-  await dataSource.destroy();
+  if (shouldDestroy) {
+    await dataSource.destroy();
+  }
 }
 
-seed().catch((err) => {
-  console.error('Seed failed:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  seed().catch((err) => {
+    console.error('Seed failed:', err);
+    process.exit(1);
+  });
+}
