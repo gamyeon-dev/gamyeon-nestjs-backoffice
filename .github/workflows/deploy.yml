@@ -136,10 +136,19 @@ jobs:
                 external: true
             EOF
 
-            # 3. Docker Hub 로그인 후 최신 이미지 풀 & 컨테이너 재시작
+            # 3. Docker Hub 로그인 후 최신 이미지 풀
             docker network create gamyeon-net || true
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
             docker pull ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+
+            # 4. Deploy image 기준으로 DB 마이그레이션 실행
+            docker run --rm \
+              --env-file .env \
+              --network gamyeon-net \
+              ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
+              npm run migration:run:prod
+
+            # 5. 컨테이너 재시작
             if command -v docker-compose >/dev/null 2>&1; then
               docker-compose up -d --no-deps backoffice-api
               docker-compose ps

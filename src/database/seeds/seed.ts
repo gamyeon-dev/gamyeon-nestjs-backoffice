@@ -102,9 +102,9 @@ export async function seed() {
 
   // === Question Results ===
   const qResults = await questionResultRepo.save([
-    { reportId: 'r001', questionId: questions[0]!.id, question: '자기소개를 간단히 해주세요.', answer: 'React와 TypeScript를 주로 사용하는 프론트엔드 개발자입니다.', score: 90, feedback: '구체적인 기술 스택과 경험을 명확히 서술하였습니다.' },
-    { reportId: 'r001', questionId: questions[1]!.id, question: '지원 동기를 말씀해주세요.', answer: '혁신적인 서비스를 만드는 팀에서 성장하고 싶습니다.', score: 85, feedback: '동기가 명확하나 회사 분석이 더 필요합니다.' },
-    { reportId: 'r002', questionId: questions[0]!.id, question: '자기소개를 간단히 해주세요.', answer: '3년차 PM으로 B2C 서비스를 담당해왔습니다.', score: 78, feedback: '경험 소개는 좋으나 구체적인 성과 수치가 부족합니다.' },
+    { reportId: 'r001', questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: 'React와 TypeScript를 주로 사용하는 프론트엔드 개발자입니다.', score: 90, feedback: '구체적인 기술 스택과 경험을 명확히 서술하였습니다.' },
+    { reportId: 'r001', questionId: String(questions[1]!.id), question: '지원 동기를 말씀해주세요.', answer: '혁신적인 서비스를 만드는 팀에서 성장하고 싶습니다.', score: 85, feedback: '동기가 명확하나 회사 분석이 더 필요합니다.' },
+    { reportId: 'r002', questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: '3년차 PM으로 B2C 서비스를 담당해왔습니다.', score: 78, feedback: '경험 소개는 좋으나 구체적인 성과 수치가 부족합니다.' },
   ]);
   console.log(`Seeded ${qResults.length} question results.`);
 

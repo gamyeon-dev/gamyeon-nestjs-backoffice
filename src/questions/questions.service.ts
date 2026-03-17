@@ -71,7 +71,7 @@ export class QuestionsService {
     }, '공통질문');
   }
 
-  async updateQuestion(id: string, dto: UpdateQuestionDto) {
+  async updateQuestion(id: number, dto: UpdateQuestionDto) {
     return withSchemaWriteGuard(async () => {
       const question = await this.questionRepo.findOneBy({ id });
       if (!question) {
@@ -96,7 +96,7 @@ export class QuestionsService {
     }, '공통질문');
   }
 
-  async deleteQuestion(id: string) {
+  async deleteQuestion(id: number) {
     return withSchemaWriteGuard(async () => {
       const question = await this.questionRepo.findOneBy({ id });
       if (!question) {
