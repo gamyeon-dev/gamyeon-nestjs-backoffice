@@ -35,16 +35,24 @@ export class QuestionsService {
         qb.andWhere('q.content ILIKE :search', { search: `%${search}%` });
       }
       if (from) {
-        qb.andWhere('q.createdAt >= :from', { from });
+        qb.andWhere('q.created_at >= :from', { from });
       }
       if (to) {
-        qb.andWhere('q.createdAt <= :to', { to: `${to}T23:59:59Z` });
+        qb.andWhere('q.created_at <= :to', { to: `${to}T23:59:59Z` });
       }
 
       const totalCount = await this.questionRepo.count();
       const filteredCount = await qb.getCount();
 
-      qb.orderBy(`q.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
+      const sortColumnMap: Record<string, string> = {
+        createdAt: 'q.created_at',
+        updatedAt: 'q.updated_at',
+      };
+
+      qb.orderBy(
+        sortColumnMap[sortBy] ?? 'q.created_at',
+        sortOrder.toUpperCase() as 'ASC' | 'DESC',
+      );
       qb.skip((page - 1) * limit).take(limit);
 
       const items = await qb.getMany();
