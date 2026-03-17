@@ -58,7 +58,7 @@ export class QuestionsService {
       const items = await qb.getMany();
 
       return { totalCount, filteredCount, page, limit, items };
-    }, '질문');
+    }, '공통질문');
   }
 
   async createQuestion(dto: CreateQuestionDto) {
@@ -68,7 +68,7 @@ export class QuestionsService {
         status: dto.status ?? 'ACTIVE',
       });
       return this.questionRepo.save(question);
-    }, '질문');
+    }, '공통질문');
   }
 
   async updateQuestion(id: string, dto: UpdateQuestionDto) {
@@ -93,7 +93,7 @@ export class QuestionsService {
         question.status = dto.status;
       }
       return this.questionRepo.save(question);
-    }, '질문');
+    }, '공통질문');
   }
 
   async deleteQuestion(id: string) {
@@ -115,6 +115,6 @@ export class QuestionsService {
       question.deletedAt = new Date();
       const saved = await this.questionRepo.save(question);
       return { id: saved.id, status: saved.status, deletedAt: saved.deletedAt };
-    }, '질문');
+    }, '공통질문');
   }
 }

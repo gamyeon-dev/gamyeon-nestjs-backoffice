@@ -57,7 +57,7 @@ export async function seed() {
   ]);
   console.log(`Seeded ${sanctions.length} sanctions.`);
 
-  // === Questions ===
+  // === Common Questions ===
   const questions = await questionRepo.save([
     { content: '자기소개를 간단히 해주세요.', status: 'ACTIVE' as const },
     { content: '지원 동기를 말씀해주세요.', status: 'ACTIVE' as const },
@@ -68,7 +68,7 @@ export async function seed() {
     { content: '갈등 상황에서 어떻게 대처하시나요?', status: 'INACTIVE' as const },
     { content: '마지막으로 하고 싶은 말씀이 있나요?', status: 'ACTIVE' as const },
   ]);
-  console.log(`Seeded ${questions.length} questions.`);
+  console.log(`Seeded ${questions.length} common questions.`);
 
   // === Notices ===
   const notices = await noticeRepo.save([

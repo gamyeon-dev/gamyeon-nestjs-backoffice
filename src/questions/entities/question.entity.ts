@@ -8,7 +8,7 @@ import {
 
 export type QuestionStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
 
-@Entity('questions')
+@Entity('common_questions')
 export class QuestionEntity {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

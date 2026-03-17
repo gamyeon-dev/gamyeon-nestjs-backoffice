@@ -113,10 +113,10 @@ DB_SECRET_ID=prod/gamyeon/backoffice/db
 
 | Method | Path | 설명 |
 |--------|------|------|
-| `GET` | `/api/v1/questions` | 질문 목록 |
-| `POST` | `/api/v1/questions` | 질문 생성 (최소 10자) |
-| `PATCH` | `/api/v1/questions/:id` | 질문 수정 |
-| `DELETE` | `/api/v1/questions/:id` | 질문 삭제 (소프트 딜리트) |
+| `GET` | `/api/v1/questions` | 공통질문 목록 |
+| `POST` | `/api/v1/questions` | 공통질문 생성 (최소 10자) |
+| `PATCH` | `/api/v1/questions/:id` | 공통질문 수정 |
+| `DELETE` | `/api/v1/questions/:id` | 공통질문 삭제 (소프트 딜리트) |
 
 ### Notices (공지 관리)
 
