@@ -9,6 +9,10 @@ import { QuestionEntity } from './entities/question.entity';
 import type { ListQuestionsQueryDto } from './dto/list-questions-query.dto';
 import type { CreateQuestionDto } from './dto/create-question.dto';
 import type { UpdateQuestionDto } from './dto/update-question.dto';
+import {
+  withSchemaReadGuard,
+  withSchemaWriteGuard,
+} from '../database/schema-guard.js';
 
 @Injectable()
 export class QuestionsService {
@@ -18,82 +22,91 @@ export class QuestionsService {
   ) {}
 
   async listQuestions(query: ListQuestionsQueryDto) {
-    const { status, search, from, to, sortBy, sortOrder, page, limit } = query;
+    return withSchemaReadGuard(async () => {
+      const { status, search, from, to, sortBy, sortOrder, page, limit } =
+        query;
 
-    const qb = this.questionRepo.createQueryBuilder('q');
+      const qb = this.questionRepo.createQueryBuilder('q');
 
-    if (status) {
-      qb.andWhere('q.status = :status', { status });
-    }
-    if (search) {
-      qb.andWhere('q.content ILIKE :search', { search: `%${search}%` });
-    }
-    if (from) {
-      qb.andWhere('q.createdAt >= :from', { from });
-    }
-    if (to) {
-      qb.andWhere('q.createdAt <= :to', { to: `${to}T23:59:59Z` });
-    }
+      if (status) {
+        qb.andWhere('q.status = :status', { status });
+      }
+      if (search) {
+        qb.andWhere('q.content ILIKE :search', { search: `%${search}%` });
+      }
+      if (from) {
+        qb.andWhere('q.createdAt >= :from', { from });
+      }
+      if (to) {
+        qb.andWhere('q.createdAt <= :to', { to: `${to}T23:59:59Z` });
+      }
 
-    const totalCount = await this.questionRepo.count();
-    const filteredCount = await qb.getCount();
+      const totalCount = await this.questionRepo.count();
+      const filteredCount = await qb.getCount();
 
-    qb.orderBy(`q.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
-    qb.skip((page - 1) * limit).take(limit);
+      qb.orderBy(`q.${sortBy}`, sortOrder.toUpperCase() as 'ASC' | 'DESC');
+      qb.skip((page - 1) * limit).take(limit);
 
-    const items = await qb.getMany();
+      const items = await qb.getMany();
 
-    return { totalCount, filteredCount, page, limit, items };
+      return { totalCount, filteredCount, page, limit, items };
+    }, '질문');
   }
 
   async createQuestion(dto: CreateQuestionDto) {
-    const question = this.questionRepo.create({
-      content: dto.content.trim(),
-      status: dto.status ?? 'ACTIVE',
-    });
-    return this.questionRepo.save(question);
+    return withSchemaWriteGuard(async () => {
+      const question = this.questionRepo.create({
+        content: dto.content.trim(),
+        status: dto.status ?? 'ACTIVE',
+      });
+      return this.questionRepo.save(question);
+    }, '질문');
   }
 
   async updateQuestion(id: string, dto: UpdateQuestionDto) {
-    const question = await this.questionRepo.findOneBy({ id });
-    if (!question) {
-      throw new NotFoundException({
-        code: 'QUESTION_NOT_FOUND',
-        message: '해당 질문을 찾을 수 없습니다.',
-      });
-    }
-    if (question.status === 'DELETED') {
-      throw new BadRequestException({
-        code: 'QUESTION_DELETED',
-        message: '삭제된 질문은 수정할 수 없습니다.',
-      });
-    }
-    if (dto.content !== undefined) {
-      question.content = dto.content.trim();
-    }
-    if (dto.status !== undefined) {
-      question.status = dto.status;
-    }
-    return this.questionRepo.save(question);
+    return withSchemaWriteGuard(async () => {
+      const question = await this.questionRepo.findOneBy({ id });
+      if (!question) {
+        throw new NotFoundException({
+          code: 'QUESTION_NOT_FOUND',
+          message: '해당 질문을 찾을 수 없습니다.',
+        });
+      }
+      if (question.status === 'DELETED') {
+        throw new BadRequestException({
+          code: 'QUESTION_DELETED',
+          message: '삭제된 질문은 수정할 수 없습니다.',
+        });
+      }
+      if (dto.content !== undefined) {
+        question.content = dto.content.trim();
+      }
+      if (dto.status !== undefined) {
+        question.status = dto.status;
+      }
+      return this.questionRepo.save(question);
+    }, '질문');
   }
 
   async deleteQuestion(id: string) {
-    const question = await this.questionRepo.findOneBy({ id });
-    if (!question) {
-      throw new NotFoundException({
-        code: 'QUESTION_NOT_FOUND',
-        message: '해당 질문을 찾을 수 없습니다.',
-      });
-    }
-    if (question.status === 'DELETED') {
-      throw new BadRequestException({
-        code: 'ALREADY_DELETED',
-        message: '이미 삭제된 질문입니다.',
-      });
-    }
-    question.status = 'DELETED';
-    question.deletedAt = new Date();
-    const saved = await this.questionRepo.save(question);
-    return { id: saved.id, status: saved.status, deletedAt: saved.deletedAt };
+    return withSchemaWriteGuard(async () => {
+      const question = await this.questionRepo.findOneBy({ id });
+      if (!question) {
+        throw new NotFoundException({
+          code: 'QUESTION_NOT_FOUND',
+          message: '해당 질문을 찾을 수 없습니다.',
+        });
+      }
+      if (question.status === 'DELETED') {
+        throw new BadRequestException({
+          code: 'ALREADY_DELETED',
+          message: '이미 삭제된 질문입니다.',
+        });
+      }
+      question.status = 'DELETED';
+      question.deletedAt = new Date();
+      const saved = await this.questionRepo.save(question);
+      return { id: saved.id, status: saved.status, deletedAt: saved.deletedAt };
+    }, '질문');
   }
 }

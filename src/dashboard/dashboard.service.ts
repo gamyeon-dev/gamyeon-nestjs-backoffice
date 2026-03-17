@@ -6,6 +6,7 @@ import { QuestionEntity } from '../questions/entities/question.entity.js';
 import { NoticeEntity } from '../notices/entities/notice.entity.js';
 import { InterviewEntity } from '../interviews/entities/interview.entity.js';
 import { ReportEntity } from '../reports/entities/report.entity.js';
+import { withSchemaFallback } from '../database/schema-guard.js';
 
 @Injectable()
 export class DashboardService {
@@ -23,29 +24,35 @@ export class DashboardService {
   ) {}
 
   async getKpi() {
-    const totalUsers = await this.userRepo.count();
-    const totalNotices = await this.noticeRepo.count();
-    const activeQuestions = await this.questionRepo.count({
-      where: { status: 'ACTIVE' },
-    });
+    const totalUsers = await withSchemaFallback(() => this.userRepo.count(), 0);
+    const totalNotices = await withSchemaFallback(
+      () => this.noticeRepo.count(),
+      0,
+    );
+    const activeQuestions = await withSchemaFallback(
+      () =>
+        this.questionRepo.count({
+          where: { status: 'ACTIVE' },
+        }),
+      0,
+    );
 
-    const interviewStatusCounts = await this.interviewRepo
-      .createQueryBuilder('intv')
-      .select('intv.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('intv.status')
-      .getRawMany<{ status: string; count: string }>();
+    const interviewStatusCounts = await withSchemaFallback(
+      () =>
+        this.interviewRepo
+          .createQueryBuilder('intv')
+          .select('intv.status', 'status')
+          .addSelect('COUNT(*)', 'count')
+          .groupBy('intv.status')
+          .getRawMany<{ status: string; count: string }>(),
+      [] as { status: string; count: string }[],
+    );
 
     const pausedCount = Number(
       interviewStatusCounts.find((r) => r.status === 'PAUSED')?.count ?? 0,
     );
 
-    const reportStatusCounts = await this.reportRepo
-      .createQueryBuilder('report')
-      .select('report.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('report.status')
-      .getRawMany<{ status: string; count: string }>();
+    const reportStatusCounts = await this.getReportStatusCounts();
 
     const analyzingReports = Number(
       reportStatusCounts.find((r) => r.status === 'IN_PROGRESS')?.count ?? 0,
@@ -65,14 +72,18 @@ export class DashboardService {
     since.setDate(since.getDate() - days);
     since.setHours(0, 0, 0, 0);
 
-    const rows = await this.userRepo
-      .createQueryBuilder('user')
-      .select("TO_CHAR(user.created_at, 'YYYY-MM-DD')", 'date')
-      .addSelect('COUNT(*)', 'count')
-      .where('user.created_at >= :since', { since })
-      .groupBy("TO_CHAR(user.created_at, 'YYYY-MM-DD')")
-      .orderBy('date', 'ASC')
-      .getRawMany<{ date: string; count: string }>();
+    const rows = await withSchemaFallback(
+      () =>
+        this.userRepo
+          .createQueryBuilder('user')
+          .select("TO_CHAR(user.created_at, 'YYYY-MM-DD')", 'date')
+          .addSelect('COUNT(*)', 'count')
+          .where('user.created_at >= :since', { since })
+          .groupBy("TO_CHAR(user.created_at, 'YYYY-MM-DD')")
+          .orderBy('date', 'ASC')
+          .getRawMany<{ date: string; count: string }>(),
+      [] as { date: string; count: string }[],
+    );
 
     const countMap = new Map(rows.map((r) => [r.date, Number(r.count)]));
 
@@ -88,12 +99,16 @@ export class DashboardService {
   }
 
   async getInterviewCompletion() {
-    const rows = await this.interviewRepo
-      .createQueryBuilder('intv')
-      .select('intv.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('intv.status')
-      .getRawMany<{ status: string; count: string }>();
+    const rows = await withSchemaFallback(
+      () =>
+        this.interviewRepo
+          .createQueryBuilder('intv')
+          .select('intv.status', 'status')
+          .addSelect('COUNT(*)', 'count')
+          .groupBy('intv.status')
+          .getRawMany<{ status: string; count: string }>(),
+      [] as { status: string; count: string }[],
+    );
 
     const total = rows.reduce((s, r) => s + Number(r.count), 0);
     const segments = rows.map((r) => ({
@@ -113,12 +128,7 @@ export class DashboardService {
   }
 
   async getReportAnalysis() {
-    const rows = await this.reportRepo
-      .createQueryBuilder('report')
-      .select('report.status', 'status')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('report.status')
-      .getRawMany<{ status: string; count: string }>();
+    const rows = await this.getReportStatusCounts();
 
     const total = rows.reduce((s, r) => s + Number(r.count), 0);
     const segments = rows.map((r) => ({
@@ -140,16 +150,24 @@ export class DashboardService {
   }
 
   async getRecentActivities(limit: number = 20) {
-    const recentUsers = await this.userRepo.find({
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+    const recentUsers = await withSchemaFallback(
+      () =>
+        this.userRepo.find({
+          order: { createdAt: 'DESC' },
+          take: limit,
+        }),
+      [] as UserEntity[],
+    );
 
-    const recentInterviews = await this.interviewRepo.find({
-      relations: ['user'],
-      order: { createdAt: 'DESC' },
-      take: limit,
-    });
+    const recentInterviews = await withSchemaFallback(
+      () =>
+        this.interviewRepo.find({
+          relations: ['user'],
+          order: { createdAt: 'DESC' },
+          take: limit,
+        }),
+      [] as InterviewEntity[],
+    );
 
     type ActivityItem = {
       type: string;
@@ -209,5 +227,18 @@ export class DashboardService {
       reportAnalysis,
       recentActivities,
     };
+  }
+
+  private async getReportStatusCounts() {
+    return withSchemaFallback(
+      () =>
+        this.reportRepo
+        .createQueryBuilder('report')
+        .select('report.status', 'status')
+        .addSelect('COUNT(*)', 'count')
+        .groupBy('report.status')
+        .getRawMany<{ status: string; count: string }>(),
+      [] as { status: string; count: string }[],
+    );
   }
 }
