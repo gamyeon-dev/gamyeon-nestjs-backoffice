@@ -118,6 +118,7 @@ export class UsersService {
         type: dto.status,
         reason: dto.reason ?? null,
         userId: id,
+        createdAt: new Date(),
       });
       await this.sanctionRepo.save(sanction);
 

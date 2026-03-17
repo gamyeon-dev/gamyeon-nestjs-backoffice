@@ -63,9 +63,12 @@ export class QuestionsService {
 
   async createQuestion(dto: CreateQuestionDto) {
     return withSchemaWriteGuard(async () => {
+      const now = new Date();
       const question = this.questionRepo.create({
         content: dto.content.trim(),
         status: dto.status ?? 'ACTIVE',
+        createdAt: now,
+        updatedAt: now,
       });
       return this.questionRepo.save(question);
     }, '공통질문');
@@ -92,6 +95,7 @@ export class QuestionsService {
       if (dto.status !== undefined) {
         question.status = dto.status;
       }
+      question.updatedAt = new Date();
       return this.questionRepo.save(question);
     }, '공통질문');
   }
@@ -113,6 +117,7 @@ export class QuestionsService {
       }
       question.status = 'DELETED';
       question.deletedAt = new Date();
+      question.updatedAt = new Date();
       const saved = await this.questionRepo.save(question);
       return { id: saved.id, status: saved.status, deletedAt: saved.deletedAt };
     }, '공통질문');

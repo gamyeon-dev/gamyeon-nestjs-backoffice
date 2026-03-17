@@ -47,6 +47,14 @@ export class CreateBackofficeManagedTables1773273600000
     `);
 
     await queryRunner.query(`
+      SELECT setval(
+        pg_get_serial_sequence('common_questions', 'id'),
+        COALESCE((SELECT MAX(id) FROM common_questions), 1),
+        true
+      )
+    `);
+
+    await queryRunner.query(`
       CREATE INDEX IF NOT EXISTS "idx_common_questions_status_created_at"
         ON "common_questions" ("status", "created_at" DESC)
     `);

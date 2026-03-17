@@ -92,11 +92,14 @@ export class NoticesService {
 
   async createNotice(dto: CreateNoticeDto): Promise<NoticeEntity> {
     return withSchemaWriteGuard(async () => {
+      const now = new Date();
       const notice = this.noticeRepo.create({
         title: dto.title.trim(),
         content: dto.content.trim(),
         category: dto.category ?? DEFAULT_NOTICE_CATEGORY,
         status: dto.status ?? DEFAULT_NOTICE_STATUS,
+        createdAt: now,
+        updatedAt: now,
       });
       return this.noticeRepo.save(notice);
     }, '공지사항');
@@ -110,6 +113,7 @@ export class NoticesService {
       if (dto.content !== undefined) notice.content = dto.content.trim();
       if (dto.category !== undefined) notice.category = dto.category;
       if (dto.status !== undefined) notice.status = dto.status;
+      notice.updatedAt = new Date();
 
       return this.noticeRepo.save(notice);
     }, '공지사항');
