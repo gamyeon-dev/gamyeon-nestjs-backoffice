@@ -30,6 +30,8 @@ export class QuestionsService {
 
       if (status) {
         qb.andWhere('q.status = :status', { status });
+      } else {
+        qb.andWhere('q.status <> :deletedStatus', { deletedStatus: 'DELETED' });
       }
       if (search) {
         qb.andWhere('q.content ILIKE :search', { search: `%${search}%` });
@@ -89,14 +91,29 @@ export class QuestionsService {
           message: '삭제된 질문은 수정할 수 없습니다.',
         });
       }
-      if (dto.content !== undefined) {
-        question.content = dto.content.trim();
+      const updatePayload = {
+        ...(dto.content !== undefined ? { content: dto.content.trim() } : {}),
+        ...(dto.status !== undefined ? { status: dto.status } : {}),
+        updatedAt: new Date(),
+      };
+
+      await this.questionRepo
+        .createQueryBuilder()
+        .update(QuestionEntity)
+        .set(updatePayload)
+        .where('id = :id', { id })
+        .andWhere('status <> :deletedStatus', { deletedStatus: 'DELETED' })
+        .execute();
+
+      const updated = await this.questionRepo.findOneBy({ id });
+      if (!updated) {
+        throw new NotFoundException({
+          code: 'QUESTION_NOT_FOUND',
+          message: '해당 질문을 찾을 수 없습니다.',
+        });
       }
-      if (dto.status !== undefined) {
-        question.status = dto.status;
-      }
-      question.updatedAt = new Date();
-      return this.questionRepo.save(question);
+
+      return updated;
     }, '공통질문');
   }
 
@@ -115,11 +132,21 @@ export class QuestionsService {
           message: '이미 삭제된 질문입니다.',
         });
       }
-      question.status = 'DELETED';
-      question.deletedAt = new Date();
-      question.updatedAt = new Date();
-      const saved = await this.questionRepo.save(question);
-      return { id: saved.id, status: saved.status, deletedAt: saved.deletedAt };
+      const deletedAt = new Date();
+
+      await this.questionRepo
+        .createQueryBuilder()
+        .update(QuestionEntity)
+        .set({
+          status: 'DELETED',
+          deletedAt,
+          updatedAt: deletedAt,
+        })
+        .where('id = :id', { id })
+        .andWhere('status <> :deletedStatus', { deletedStatus: 'DELETED' })
+        .execute();
+
+      return { id, status: 'DELETED', deletedAt };
     }, '공통질문');
   }
 }

@@ -29,7 +29,7 @@ export class ReportsService {
         .createQueryBuilder('report')
         .leftJoinAndSelect('report.user', 'user');
 
-      if (query.status) {
+      if (query.status && query.status !== 'ALL') {
         qb.andWhere('report.status = :status', { status: query.status });
       }
 
@@ -43,8 +43,8 @@ export class ReportsService {
       const totalCount = await this.reportRepo.count();
 
       const columnMap: Record<string, string> = {
-        completedAt: 'report.completedAt',
-        createdAt: 'report.createdAt',
+        completedAt: 'report.completed_at',
+        createdAt: 'report.created_at',
         score: 'report.score',
       };
       qb.orderBy(
