@@ -74,12 +74,12 @@ export class ReportsService {
         const totalCount = await this.reportRepo.count();
 
         const columnMap: Record<string, string> = {
-          completedAt: 'report.updated_at',
-          createdAt: 'report.created_at',
-          score: 'report.total_score',
+          completedAt: 'report.updatedAt',
+          createdAt: 'report.createdAt',
+          score: 'report.totalScore',
         };
         qb.orderBy(
-          columnMap[sortBy] ?? 'report.updated_at',
+          columnMap[sortBy] ?? 'report.updatedAt',
           sortOrder.toUpperCase() as 'ASC' | 'DESC',
           sortBy === 'score' ? 'NULLS LAST' : undefined,
         );
