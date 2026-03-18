@@ -23,8 +23,7 @@ export class InterviewsService {
     return withSchemaReadGuard(async () => {
       const { page = 1, limit = 20, sortOrder = 'desc' } = query;
       const sortBy = query.sortBy ?? 'createdAt';
-      const normalizedStatus =
-        query.status === 'READY' ? 'CREATED' : query.status;
+      const normalizedStatus = query.status;
 
       this.logger.log(
         `listInterviews query=${JSON.stringify({
@@ -46,9 +45,15 @@ export class InterviewsService {
           .leftJoinAndSelect('intv.user', 'user');
 
         if (normalizedStatus && normalizedStatus !== 'ALL') {
-          qb.andWhere('intv.status = :status', {
-            status: normalizedStatus,
-          });
+          if (normalizedStatus === 'READY') {
+            qb.andWhere('intv.status IN (:...statuses)', {
+              statuses: ['READY', 'CREATED'],
+            });
+          } else {
+            qb.andWhere('intv.status = :status', {
+              status: normalizedStatus,
+            });
+          }
         }
 
         if (query.search) {
@@ -161,7 +166,8 @@ export class InterviewsService {
     return {
       ...interview,
       sessionId: String(interview.id),
-      status: interview.status === 'CREATED' ? 'READY' : interview.status,
+      status:
+        interview.status === 'CREATED' ? 'READY' : interview.status,
     };
   }
 }
