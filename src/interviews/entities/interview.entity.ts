@@ -9,7 +9,11 @@ import {
 } from 'typeorm';
 import { UserEntity } from '../../users/entities/user.entity.js';
 
-export type InterviewStatus = 'READY' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED';
+export type InterviewStatus =
+  | 'CREATED'
+  | 'IN_PROGRESS'
+  | 'PAUSED'
+  | 'FINISHED';
 
 @Entity('intv')
 export class InterviewEntity {
@@ -24,7 +28,7 @@ export class InterviewEntity {
 
   @Column({
     type: 'varchar',
-    enum: ['READY', 'IN_PROGRESS', 'PAUSED', 'FINISHED'],
+    enum: ['CREATED', 'IN_PROGRESS', 'PAUSED', 'FINISHED'],
   })
   status!: InterviewStatus;
 

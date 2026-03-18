@@ -86,25 +86,53 @@ export async function seed() {
     { userId: users[1]!.id, title: 'PM 면접', status: 'FINISHED', startedAt: new Date('2026-03-02T14:00:00Z'), finishedAt: new Date('2026-03-02T14:25:00Z'), durationSeconds: 1500, totalPausedSeconds: 0 },
     { userId: users[2]!.id, title: '스타트업 면접', status: 'PAUSED', startedAt: new Date('2026-03-03T08:00:00Z'), pausedAt: new Date('2026-03-03T08:10:00Z'), durationSeconds: 600, totalPausedSeconds: 120 },
     { userId: users[5]!.id, title: '백엔드 면접', status: 'IN_PROGRESS', startedAt: new Date('2026-03-05T09:00:00Z'), durationSeconds: 300, totalPausedSeconds: 0 },
-    { userId: users[7]!.id, title: undefined, status: 'READY', totalPausedSeconds: 0 },
+    { userId: users[7]!.id, title: undefined, status: 'CREATED', totalPausedSeconds: 0 },
   ];
   const interviews = await interviewRepo.save(interviewData);
   console.log(`Seeded ${interviews.length} interviews.`);
 
   // === Reports ===
   const reportData: DeepPartial<ReportEntity>[] = [
-    { reportId: 'r001', intvId: interviews[0]!.id, userId: users[0]!.id, jobCategory: '프론트엔드', status: 'COMPLETED', score: 88, feedback: '전반적으로 프론트엔드 역량이 잘 드러났습니다.', completedAt: new Date('2026-03-01T11:00:00Z') },
-    { reportId: 'r002', intvId: interviews[1]!.id, userId: users[1]!.id, jobCategory: 'PM', status: 'COMPLETED', score: 74, feedback: '프로젝트 관리 역량은 좋으나 기술적 깊이가 부족합니다.', completedAt: new Date('2026-03-02T15:00:00Z') },
-    { reportId: 'r003', intvId: interviews[2]!.id, userId: users[2]!.id, status: 'IN_PROGRESS' },
+    {
+      intvId: interviews[0]!.id,
+      userId: users[0]!.id,
+      jobCategory: '프론트엔드',
+      status: 'SUCCEED',
+      totalScore: 88,
+      reportData: { feedback: '전반적으로 프론트엔드 역량이 잘 드러났습니다.' },
+      strengths: ['구체적인 기술 스택과 경험을 명확히 서술하였습니다.'],
+      weaknesses: ['회사 분석이 더 필요합니다.'],
+      createdAt: new Date('2026-03-01T11:00:00Z'),
+      updatedAt: new Date('2026-03-01T11:00:00Z'),
+    },
+    {
+      intvId: interviews[1]!.id,
+      userId: users[1]!.id,
+      jobCategory: 'PM',
+      status: 'SUCCEED',
+      totalScore: 74,
+      reportData: { feedback: '프로젝트 관리 역량은 좋으나 기술적 깊이가 부족합니다.' },
+      strengths: ['경험 소개는 좋습니다.'],
+      weaknesses: ['구체적인 성과 수치가 부족합니다.'],
+      createdAt: new Date('2026-03-02T15:00:00Z'),
+      updatedAt: new Date('2026-03-02T15:00:00Z'),
+    },
+    {
+      intvId: interviews[2]!.id,
+      userId: users[2]!.id,
+      status: 'IN_PROGRESS',
+      createdAt: new Date('2026-03-03T08:20:00Z'),
+      updatedAt: new Date('2026-03-03T08:20:00Z'),
+    },
   ];
   const reports = await reportRepo.save(reportData);
   console.log(`Seeded ${reports.length} reports.`);
 
   // === Question Results ===
   const qResults = await questionResultRepo.save([
-    { reportId: 'r001', questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: 'React와 TypeScript를 주로 사용하는 프론트엔드 개발자입니다.', score: 90, feedback: '구체적인 기술 스택과 경험을 명확히 서술하였습니다.' },
-    { reportId: 'r001', questionId: String(questions[1]!.id), question: '지원 동기를 말씀해주세요.', answer: '혁신적인 서비스를 만드는 팀에서 성장하고 싶습니다.', score: 85, feedback: '동기가 명확하나 회사 분석이 더 필요합니다.' },
-    { reportId: 'r002', questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: '3년차 PM으로 B2C 서비스를 담당해왔습니다.', score: 78, feedback: '경험 소개는 좋으나 구체적인 성과 수치가 부족합니다.' },
+    { reportId: reports[0]!.id, questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: 'React와 TypeScript를 주로 사용하는 프론트엔드 개발자입니다.', score: 90, feedback: '구체적인 기술 스택과 경험을 명확히 서술하였습니다.' },
+    { reportId: reports[0]!.id, questionId: String(questions[1]!.id), question: '지원 동기를 말씀해주세요.', answer: '혁신적인 서비스를 만드는 팀에서 성장하고 싶습니다.', score: 85, feedback: '동기가 명확하나 회사 분석이 더 필요합니다.' },
+    { reportId: reports[1]!.id, questionId: String(questions[0]!.id), question: '자기소개를 간단히 해주세요.', answer: '3년차 PM으로 B2C 서비스를 담당해왔습니다.', score: 78, feedback: '경험 소개는 좋으나 구체적인 성과 수치가 부족합니다.' },
   ]);
   console.log(`Seeded ${qResults.length} question results.`);
 

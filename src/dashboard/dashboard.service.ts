@@ -230,15 +230,26 @@ export class DashboardService {
   }
 
   private async getReportStatusCounts() {
-    return withSchemaFallback(
+    const rows = await withSchemaFallback(
       () =>
         this.reportRepo
-        .createQueryBuilder('report')
-        .select('report.status', 'status')
-        .addSelect('COUNT(*)', 'count')
-        .groupBy('report.status')
-        .getRawMany<{ status: string; count: string }>(),
+          .createQueryBuilder('report')
+          .select('report.status', 'status')
+          .addSelect('COUNT(*)', 'count')
+          .groupBy('report.status')
+          .getRawMany<{ status: string; count: string }>(),
       [] as { status: string; count: string }[],
     );
+
+    const normalized = new Map<string, number>();
+    for (const row of rows) {
+      const status = row.status === 'SUCCEED' ? 'COMPLETED' : row.status;
+      normalized.set(status, (normalized.get(status) ?? 0) + Number(row.count));
+    }
+
+    return Array.from(normalized.entries()).map(([status, count]) => ({
+      status,
+      count: String(count),
+    }));
   }
 }

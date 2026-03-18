@@ -5,6 +5,11 @@ import { InterviewEntity } from './entities/interview.entity.js';
 import { ListInterviewsQueryDto } from './dto/list-interviews-query.dto.js';
 import { withSchemaReadGuard } from '../database/schema-guard.js';
 
+type InterviewResponse = Omit<InterviewEntity, 'status'> & {
+  sessionId: string;
+  status: 'READY' | 'IN_PROGRESS' | 'PAUSED' | 'FINISHED';
+};
+
 @Injectable()
 export class InterviewsService {
   constructor(
@@ -21,8 +26,10 @@ export class InterviewsService {
         .createQueryBuilder('intv')
         .leftJoinAndSelect('intv.user', 'user');
 
-      if (query.status) {
-        qb.andWhere('intv.status = :status', { status: query.status });
+      if (query.status && query.status !== 'ALL') {
+        qb.andWhere('intv.status = :status', {
+          status: query.status === 'READY' ? 'CREATED' : query.status,
+        });
       }
 
       if (query.search) {
@@ -44,9 +51,9 @@ export class InterviewsService {
       const totalCount = await this.interviewRepo.count();
 
       const columnMap: Record<string, string> = {
-        createdAt: 'intv.createdAt',
-        startedAt: 'intv.startedAt',
-        durationSeconds: 'intv.durationSeconds',
+        createdAt: 'intv.created_at',
+        startedAt: 'intv.started_at',
+        durationSeconds: 'intv.duration_seconds',
       };
       qb.orderBy(
         columnMap[sortBy] ?? 'intv.created_at',
@@ -56,11 +63,17 @@ export class InterviewsService {
 
       const [items, filteredCount] = await qb.getManyAndCount();
 
-      return { totalCount, filteredCount, page, limit, items };
+      return {
+        totalCount,
+        filteredCount,
+        page,
+        limit,
+        items: items.map((item) => this.toInterviewResponse(item)),
+      };
     }, '면접');
   }
 
-  async getInterviewById(id: number): Promise<InterviewEntity> {
+  async getInterviewById(id: number): Promise<InterviewResponse> {
     return withSchemaReadGuard(async () => {
       const interview = await this.interviewRepo.findOne({
         where: { id },
@@ -72,7 +85,15 @@ export class InterviewsService {
           message: '해당 면접 세션을 찾을 수 없습니다.',
         });
       }
-      return interview;
+      return this.toInterviewResponse(interview);
     }, '면접');
+  }
+
+  private toInterviewResponse(interview: InterviewEntity): InterviewResponse {
+    return {
+      ...interview,
+      sessionId: String(interview.id),
+      status: interview.status === 'CREATED' ? 'READY' : interview.status,
+    };
   }
 }
