@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ReportEntity } from './entities/report.entity.js';
@@ -25,11 +25,13 @@ type ReportDetailResponse = ReportListItem & {
   improvements: string[];
   feedback: string | null;
   reportData: Record<string, unknown> | null;
-  questionResults: [];
+  questionResults: Array<Record<string, never>>;
 };
 
 @Injectable()
 export class ReportsService {
+  private readonly logger = new Logger(ReportsService.name);
+
   constructor(
     @InjectRepository(ReportEntity)
     private readonly reportRepo: Repository<ReportEntity>,
@@ -40,72 +42,136 @@ export class ReportsService {
       const { page = 1, limit = 20, sortOrder = 'desc' } = query;
       const sortBy = query.sortBy ?? 'completedAt';
 
-      const qb = this.reportRepo
-        .createQueryBuilder('report')
-        .leftJoinAndSelect('report.user', 'user');
-
-      if (query.status && query.status !== 'ALL') {
-        qb.andWhere('report.status = :status', { status: query.status });
-      }
-
-      if (query.search) {
-        qb.andWhere(
-          '(CAST(report.id AS TEXT) ILIKE :search OR CAST(report.intv_id AS TEXT) ILIKE :search OR user.nickname ILIKE :search)',
-          { search: `%${query.search}%` },
-        );
-      }
-
-      const totalCount = await this.reportRepo.count();
-
-      const columnMap: Record<string, string> = {
-        completedAt: 'report.updated_at',
-        createdAt: 'report.created_at',
-        score: 'report.total_score',
-      };
-      qb.orderBy(
-        columnMap[sortBy] ?? 'report.updated_at',
-        sortOrder.toUpperCase() as 'ASC' | 'DESC',
-        sortBy === 'score' ? 'NULLS LAST' : undefined,
+      this.logger.log(
+        `listReports query=${JSON.stringify({
+          page,
+          limit,
+          sortBy,
+          sortOrder,
+          status: query.status ?? null,
+          search: query.search ?? null,
+        })}`,
       );
-      qb.skip((page - 1) * limit).take(limit);
 
-      const [items, filteredCount] = await qb.getManyAndCount();
+      try {
+        const qb = this.reportRepo
+          .createQueryBuilder('report')
+          .leftJoinAndSelect('report.user', 'user');
 
-      return {
-        totalCount,
-        filteredCount,
-        page,
-        limit,
-        items: items.map((item) => this.toReportListItem(item)),
-      };
+        if (query.status && query.status !== 'ALL') {
+          qb.andWhere('report.status = :status', {
+            status: query.status === 'COMPLETED' ? 'SUCCEED' : query.status,
+          });
+        }
+
+        if (query.search) {
+          qb.andWhere(
+            '(CAST(report.id AS TEXT) ILIKE :search OR CAST(report.intv_id AS TEXT) ILIKE :search OR user.nickname ILIKE :search)',
+            { search: `%${query.search}%` },
+          );
+        }
+
+        const totalCount = await this.reportRepo.count();
+
+        const columnMap: Record<string, string> = {
+          completedAt: 'report.updated_at',
+          createdAt: 'report.created_at',
+          score: 'report.total_score',
+        };
+        qb.orderBy(
+          columnMap[sortBy] ?? 'report.updated_at',
+          sortOrder.toUpperCase() as 'ASC' | 'DESC',
+          sortBy === 'score' ? 'NULLS LAST' : undefined,
+        );
+        qb.skip((page - 1) * limit).take(limit);
+
+        const [items, filteredCount] = await qb.getManyAndCount();
+        const responseItems = items.map((item) => this.toReportListItem(item));
+
+        this.logger.log(
+          `listReports result=${JSON.stringify({
+            totalCount,
+            filteredCount,
+            returnedCount: responseItems.length,
+            firstIds: responseItems.slice(0, 5).map((item) => item.reportId),
+            statuses: [...new Set(responseItems.map((item) => item.status))],
+          })}`,
+        );
+
+        return {
+          totalCount,
+          filteredCount,
+          page,
+          limit,
+          items: responseItems,
+        };
+      } catch (error) {
+        this.logger.error(
+          `listReports failed query=${JSON.stringify({
+            page,
+            limit,
+            sortBy,
+            sortOrder,
+            status: query.status ?? null,
+            search: query.search ?? null,
+          })}`,
+          error instanceof Error ? error.stack : JSON.stringify(error),
+        );
+        throw error;
+      }
     }, '리포트');
   }
 
   async getReportById(reportId: string): Promise<ReportDetailResponse> {
     return withSchemaReadGuard(async () => {
       const numericId = Number(reportId);
-      const report = await this.reportRepo.findOne({
-        where: Number.isNaN(numericId) ? { id: -1 } : { id: numericId },
-        relations: ['user'],
-      });
-      if (!report) {
-        throw new NotFoundException({
-          code: 'REPORT_NOT_FOUND',
-          message: '해당 리포트를 찾을 수 없습니다.',
+      this.logger.log(
+        `getReportById reportId=${reportId} numericId=${
+          Number.isNaN(numericId) ? 'NaN' : numericId
+        }`,
+      );
+
+      try {
+        const report = await this.reportRepo.findOne({
+          where: Number.isNaN(numericId) ? { id: -1 } : { id: numericId },
+          relations: ['user'],
         });
+        if (!report) {
+          this.logger.warn(`getReportById notFound reportId=${reportId}`);
+          throw new NotFoundException({
+            code: 'REPORT_NOT_FOUND',
+            message: '해당 리포트를 찾을 수 없습니다.',
+          });
+        }
+
+        const strengths = this.toStringArray(report.strengths);
+        const improvements = this.toStringArray(report.weaknesses);
+        const response = {
+          ...this.toReportListItem(report),
+          strengths,
+          improvements,
+          feedback: this.extractFeedback(report.reportData),
+          reportData: report.reportData,
+          questionResults: [],
+        };
+
+        this.logger.log(
+          `getReportById success=${JSON.stringify({
+            reportId: response.reportId,
+            intvId: response.intvId,
+            status: response.status,
+            score: response.score,
+          })}`,
+        );
+
+        return response;
+      } catch (error) {
+        this.logger.error(
+          `getReportById failed reportId=${reportId}`,
+          error instanceof Error ? error.stack : JSON.stringify(error),
+        );
+        throw error;
       }
-
-      const strengths = this.toStringArray(report.strengths);
-      const improvements = this.toStringArray(report.weaknesses);
-
-      return {
-        ...this.toReportListItem(report),
-        strengths,
-        improvements,
-        feedback: this.extractFeedback(report.reportData),
-        reportData: report.reportData,
-        questionResults: [],
-      };
     }, '리포트');
   }
 
